@@ -1,5 +1,5 @@
-# Your Project's Title...
-Your project's description...
+# Oak Chain Dashboard (EDS)
+Edge Delivery Services frontend for Oak Chain Aeron operations dashboards, backed by API/CLI control plane data from `oak-segment-consensus`.
 
 ## Environments
 - Preview: https://main--{repo}--{owner}.aem.page/
@@ -12,6 +12,22 @@ Before using the aem-boilerplate, we recommand you to go through the documentati
 2. [The Anatomy of a Project](https://www.aem.live/developer/anatomy-of-a-project)
 3. [Web Performance](https://www.aem.live/developer/keeping-it-100)
 4. [Markup, Sections, Blocks, and Auto Blocking](https://www.aem.live/developer/markup-sections-blocks)
+
+Project-specific docs:
+- `docs/ops-api-contract-v1.md` (dashboard-facing API schema contract)
+- `scripts/ops-runtime-config.js` (single source of truth for ops API base/endpoints/refresh defaults)
+
+Mock adapter (local contract server):
+- `npm run mock:ops`
+- Serves `/ops/v1/*` on `http://localhost:8787`
+- Use this for block development before live gateway wiring
+
+Proxy mode (map live `oak-segment-consensus` data into `/ops/v1/*`):
+- `OPS_MOCK_MODE=proxy OPS_UPSTREAM_BASE=http://127.0.0.1:8090 npm run mock:ops`
+
+Authoring model:
+- Dashboard blocks are marker-style in DA (no endpoint rows required).
+- API/runtime wiring is controlled in `scripts/ops-runtime-config.js` and adapter code.
 
 ## Installation
 

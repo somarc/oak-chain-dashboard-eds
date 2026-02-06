@@ -1,0 +1,60 @@
+.tarmk-growth-state .tarmk-growth-meta {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--brand-secondary);
+  font-size: 0.8rem;
+  font-family: var(--mono-font-family);
+}
+
+.tarmk-growth-state .tarmk-growth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.8rem;
+  margin: 0 0 0.9rem;
+}
+
+.tarmk-growth-state .tarmk-growth-card {
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  background: rgba(22, 33, 62, 0.65);
+  padding: 0.8rem 0.95rem;
+}
+
+.tarmk-growth-state .tarmk-growth-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tarmk-growth-state .tarmk-growth-value {
+  margin: 0.3rem 0 0.2rem;
+  font-size: 1.4rem;
+  font-family: var(--mono-font-family);
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.tarmk-growth-state .tarmk-growth-caption {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.tarmk-growth-state .tarmk-growth-foot {
+  margin: 0;
+  font-size: 0.8rem;
+  font-family: var(--mono-font-family);
+  color: var(--text-secondary);
+}
+
+.tarmk-growth-state .tarmk-growth-foot.is-error {
+  color: #f87171;
+}

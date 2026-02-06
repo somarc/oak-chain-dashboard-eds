@@ -1,0 +1,164 @@
+.aeron-raft-cluster .aeron-raft-meta {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--brand-secondary);
+  font-size: 0.8rem;
+  font-family: var(--mono-font-family);
+}
+
+.aeron-raft-cluster .aeron-raft-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.7rem;
+  margin: 0 0 1rem;
+}
+
+.aeron-raft-cluster .aeron-raft-stat {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  background: rgba(22, 33, 62, 0.65);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-family: var(--mono-font-family);
+}
+
+.aeron-raft-cluster .aeron-raft-graph-container {
+  margin: 0 0 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-divider);
+  background: radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.08), transparent 42%), rgba(13, 20, 36, 0.85);
+  padding: 0.8rem;
+}
+
+.aeron-raft-cluster .aeron-raft-graph-wrap {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.aeron-raft-cluster .aeron-raft-graph {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.aeron-raft-cluster .aeron-raft-edge {
+  stroke-width: 3;
+}
+
+.aeron-raft-cluster .aeron-raft-edge.is-active {
+  stroke: rgba(34, 211, 238, 0.5);
+}
+
+.aeron-raft-cluster .aeron-raft-edge.is-muted {
+  stroke: rgba(120, 132, 156, 0.35);
+  stroke-dasharray: 5 5;
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot .dot-bg {
+  fill: rgba(15, 22, 38, 0.95);
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot .dot-border {
+  fill: none;
+  stroke: rgba(88, 166, 255, 0.6);
+  stroke-width: 3;
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot.is-leader .dot-border {
+  stroke: rgba(255, 215, 0, 0.85);
+  filter: drop-shadow(0 0 9px rgba(255, 215, 0, 0.35));
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot.is-self .dot-border {
+  stroke-width: 4;
+  filter: drop-shadow(0 0 9px rgba(34, 211, 238, 0.35));
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot.is-leader.is-self .dot-border {
+  stroke-width: 4;
+  filter: drop-shadow(0 0 9px rgba(255, 215, 0, 0.45));
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot .dot-label {
+  fill: var(--text-color);
+  font-size: 14px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot .dot-role {
+  fill: var(--text-secondary);
+  font-size: 10px;
+  text-anchor: middle;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.aeron-raft-cluster .aeron-raft-node-dot.is-leader .dot-role {
+  fill: rgba(255, 215, 0, 0.85);
+}
+
+.aeron-raft-cluster .aeron-raft-graph-empty {
+  margin: 0;
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 1rem;
+}
+
+.aeron-raft-cluster .aeron-raft-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.aeron-raft-cluster .aeron-raft-node {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(88, 166, 255, 0.35);
+  background: rgba(88, 166, 255, 0.08);
+}
+
+.aeron-raft-cluster .aeron-raft-node.is-leader {
+  border-color: rgba(255, 215, 0, 0.5);
+  background: rgba(255, 215, 0, 0.09);
+}
+
+.aeron-raft-cluster .aeron-raft-node.is-self {
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.3) inset;
+}
+
+.aeron-raft-cluster .aeron-raft-node-title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.aeron-raft-cluster .aeron-raft-node-wallet {
+  margin: 0.35rem 0;
+  color: var(--brand-tertiary);
+  font-size: 0.82rem;
+  font-family: var(--mono-font-family);
+}
+
+.aeron-raft-cluster .aeron-raft-node-status {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 0.76rem;
+  font-family: var(--mono-font-family);
+}
+
+.aeron-raft-cluster .aeron-raft-fail {
+  margin: 0;
+  color: #f87171;
+  font-size: 0.9rem;
+}

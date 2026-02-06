@@ -1,4 +1,5 @@
 import { getMetadata } from '../../scripts/aem.js';
+import { getOpsRuntimeConfig } from '../../scripts/ops-runtime-config.js';
 import { loadFragment } from '../fragment/fragment.js';
 
 // media query match that indicates mobile/tablet width
@@ -51,6 +52,159 @@ function openOnKeydown(e) {
 
 function focusNavSection() {
   document.activeElement.addEventListener('keydown', openOnKeydown);
+}
+
+function buildUrl(base, path) {
+  if (!path) return null;
+  const normalizedBase = (base || '').replace(/\/$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBase}${normalizedPath}`;
+}
+
+function unwrapEnvelope(payload) {
+  if (payload && typeof payload === 'object' && payload.data && typeof payload.data === 'object') {
+    return payload.data;
+  }
+  return payload;
+}
+
+function shortWallet(wallet) {
+  if (!wallet || typeof wallet !== 'string') return 'unknown';
+  if (wallet.length <= 18) return wallet;
+  return `${wallet.slice(0, 10)}...${wallet.slice(-8)}`;
+}
+
+function buildBrand(navBrand) {
+  const existingLink = navBrand.querySelector('a');
+  const href = existingLink ? existingLink.getAttribute('href') : '/';
+
+  navBrand.textContent = '';
+
+  const link = document.createElement('a');
+  link.className = 'nav-brand-link';
+  link.href = href || '/';
+  link.setAttribute('aria-label', 'Blockchain AEM home');
+
+  const icon = document.createElement('span');
+  icon.className = 'nav-brand-icon';
+  icon.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+  `;
+
+  const text = document.createElement('span');
+  text.className = 'nav-brand-text';
+
+  const titleRow = document.createElement('span');
+  titleRow.className = 'nav-brand-title-row';
+
+  const title = document.createElement('span');
+  title.className = 'nav-brand-title';
+  title.innerHTML = 'Blockchain <span>AEM</span>';
+
+  const subtitle = document.createElement('span');
+  subtitle.className = 'nav-brand-subtitle';
+  subtitle.textContent = 'Global P2P Oak Repository';
+
+  titleRow.append(title);
+  text.append(titleRow, subtitle);
+  link.append(icon, text);
+  navBrand.append(link);
+
+  return {
+    title,
+    subtitle,
+  };
+}
+
+function createChip(label) {
+  const chip = document.createElement('span');
+  chip.className = 'nav-status-chip';
+  chip.textContent = label;
+  return chip;
+}
+
+function buildOpsStatus(navTools) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'nav-status-row';
+
+  const validator = createChip('Validator n/a');
+  const ipfs = createChip('IPFS n/a');
+  const mode = createChip('Mode n/a');
+  const wallet = createChip('Wallet n/a');
+  const network = createChip('Network n/a');
+
+  wrapper.append(validator, ipfs, mode, wallet, network);
+
+  navTools.textContent = '';
+  navTools.append(wrapper);
+
+  return {
+    validator,
+    ipfs,
+    mode,
+    wallet,
+    network,
+  };
+}
+
+function applyHeaderData(data, refs) {
+  const payload = data || {};
+  const validator = payload.validator || {};
+  const ipfs = payload.ipfs || {};
+
+  const nodeId = validator.nodeId !== undefined ? validator.nodeId : 'n/a';
+  const role = String(validator.role || '').toUpperCase() || 'UNKNOWN';
+  const mode = String(payload.mode || 'unknown').toLowerCase();
+
+  refs.brand.subtitle.textContent = payload.subtitle || 'Global P2P Oak Repository';
+  refs.chips.validator.textContent = `Validator ${nodeId} ${role}`;
+
+  refs.chips.ipfs.textContent = `IPFS ${String(ipfs.daemonStatus || 'n/a').toUpperCase()}`;
+  refs.chips.mode.textContent = `Mode ${mode}`;
+  refs.chips.wallet.textContent = `Wallet ${payload.clusterWalletShort || shortWallet(payload.clusterWallet)}`;
+  refs.chips.network.textContent = `Network ${String(payload.networkStatus || 'unknown').toUpperCase()}`;
+
+  refs.chips.mode.classList.remove('is-mode-mock', 'is-mode-sepolia', 'is-mode-mainnet');
+  if (mode === 'mock') refs.chips.mode.classList.add('is-mode-mock');
+  if (mode === 'sepolia') refs.chips.mode.classList.add('is-mode-sepolia');
+  if (mode === 'mainnet') refs.chips.mode.classList.add('is-mode-mainnet');
+
+  refs.chips.ipfs.classList.remove('is-up', 'is-down');
+  if (String(ipfs.daemonStatus || '').toUpperCase() === 'UP') {
+    refs.chips.ipfs.classList.add('is-up');
+  } else if (String(ipfs.daemonStatus || '').toUpperCase() === 'DOWN') {
+    refs.chips.ipfs.classList.add('is-down');
+  }
+
+  refs.chips.validator.classList.remove('is-role-leader', 'is-role-follower');
+  if (role === 'LEADER') refs.chips.validator.classList.add('is-role-leader');
+  if (role === 'FOLLOWER') refs.chips.validator.classList.add('is-role-follower');
+}
+
+async function refreshHeader({ baseUrl, endpoint, refs }) {
+  const target = buildUrl(baseUrl, endpoint);
+  if (!target) return;
+
+  try {
+    const response = await fetch(target, { headers: { Accept: 'application/json' } });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = unwrapEnvelope(await response.json());
+    applyHeaderData(payload, refs);
+  } catch (_error) {
+    applyHeaderData({
+      subtitle: 'Global P2P Oak Repository',
+      validator: { nodeId: 'n/a', role: 'UNKNOWN' },
+      binaries: { type: 'n/a' },
+      ipfs: { daemonStatus: 'DOWN' },
+      mode: 'unknown',
+      clusterWallet: 'unknown',
+      networkStatus: 'down',
+    }, refs);
+  }
 }
 
 /**
@@ -113,6 +267,10 @@ function toggleMenu(nav, navSections, forceExpanded = null) {
  * @param {Element} block The header block element
  */
 export default async function decorate(block) {
+  const runtime = getOpsRuntimeConfig();
+  const headerEndpoint = runtime.endpoints.header;
+  const refreshSeconds = Number(runtime.refreshSeconds.header || 5);
+
   // load nav as fragment
   const navMeta = getMetadata('nav');
   const navPath = navMeta ? new URL(navMeta, window.location).pathname : '/nav';
@@ -131,41 +289,24 @@ export default async function decorate(block) {
   });
 
   const navBrand = nav.querySelector('.nav-brand');
-  const brandLink = navBrand.querySelector('.button');
-  if (brandLink) {
-    brandLink.className = '';
-    brandLink.closest('.button-container').className = '';
-  }
+  const navTools = nav.querySelector('.nav-tools');
+  const brandRefs = navBrand ? buildBrand(navBrand) : null;
+  const chipRefs = navTools ? buildOpsStatus(navTools) : null;
 
   const navSections = nav.querySelector('.nav-sections');
   if (navSections) {
-    navSections.querySelectorAll(':scope .default-content-wrapper > ul > li').forEach((navSection) => {
-      if (navSection.querySelector('ul')) navSection.classList.add('nav-drop');
-      navSection.addEventListener('click', () => {
-        if (isDesktop.matches) {
-          const expanded = navSection.getAttribute('aria-expanded') === 'true';
-          toggleAllNavSections(navSections);
-          navSection.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-        }
-      });
-    });
+    navSections.remove();
   }
-
-  // hamburger for mobile
-  const hamburger = document.createElement('div');
-  hamburger.classList.add('nav-hamburger');
-  hamburger.innerHTML = `<button type="button" aria-controls="nav" aria-label="Open navigation">
-      <span class="nav-hamburger-icon"></span>
-    </button>`;
-  hamburger.addEventListener('click', () => toggleMenu(nav, navSections));
-  nav.prepend(hamburger);
-  nav.setAttribute('aria-expanded', 'false');
-  // prevent mobile nav behavior on window resize
-  toggleMenu(nav, navSections, isDesktop.matches);
-  isDesktop.addEventListener('change', () => toggleMenu(nav, navSections, isDesktop.matches));
 
   const navWrapper = document.createElement('div');
   navWrapper.className = 'nav-wrapper';
   navWrapper.append(nav);
   block.append(navWrapper);
+
+  if (brandRefs && chipRefs) {
+    const refs = { brand: brandRefs, chips: chipRefs };
+    const tick = () => refreshHeader({ baseUrl: runtime.apiBase, endpoint: headerEndpoint, refs });
+    tick();
+    window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
+  }
 }

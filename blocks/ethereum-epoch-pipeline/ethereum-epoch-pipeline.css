@@ -1,0 +1,81 @@
+.ethereum-epoch-pipeline .epoch-pipeline-meta {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 0.7rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--brand-secondary);
+  font-size: 0.8rem;
+  font-family: var(--mono-font-family);
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-subtitle {
+  margin: 0 0 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-stages {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.8rem;
+  margin: 0 0 0.9rem;
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-stage {
+  margin: 0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-primary);
+  background: rgba(22, 33, 62, 0.55);
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-stage.stage-ingest {
+  border-color: rgba(255, 215, 0, 0.45);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-stage.stage-current {
+  border-color: rgba(88, 166, 255, 0.45);
+  background: rgba(88, 166, 255, 0.08);
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-stage.stage-finalized {
+  border-color: rgba(63, 185, 80, 0.45);
+  background: rgba(63, 185, 80, 0.09);
+}
+
+.ethereum-epoch-pipeline .epoch-stage-label {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.ethereum-epoch-pipeline .epoch-stage-value {
+  margin: 0.35rem 0 0.2rem;
+  color: var(--text-color);
+  font-size: 1.3rem;
+  font-family: var(--mono-font-family);
+  font-weight: 700;
+}
+
+.ethereum-epoch-pipeline .epoch-stage-detail {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-footer {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-family: var(--mono-font-family);
+}
+
+.ethereum-epoch-pipeline .epoch-pipeline-footer.is-error {
+  color: #f87171;
+}
