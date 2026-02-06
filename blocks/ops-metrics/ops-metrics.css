@@ -14,6 +14,13 @@
   line-height: 1;
 }
 
+.ops-metrics .ops-metrics-shell-updated {
+  margin: 0.8rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
 .ops-metrics .ops-metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -97,4 +104,8 @@
   font-size: 0.78rem;
   border-top: 1px solid rgba(132, 152, 207, 0.16);
   padding-top: 0.5rem;
+}
+
+.ops-metrics .ops-metrics-card-detail:empty {
+  display: none;
 }

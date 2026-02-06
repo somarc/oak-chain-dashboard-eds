@@ -34,6 +34,30 @@ function asNum(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function resolveConsensusRole(payload) {
+  const directRole = pickValue(payload, ['currentRole', 'role', 'leaderRole'], null);
+  if (directRole) return String(directRole).toUpperCase();
+  const leader = pickValue(payload, ['leader'], null);
+  if (leader && typeof leader === 'object' && leader.role) {
+    return String(leader.role).toUpperCase();
+  }
+  const cluster = pickValue(payload, ['cluster'], null);
+  if (cluster && typeof cluster === 'object' && cluster.role) {
+    return String(cluster.role).toUpperCase();
+  }
+  return 'N/A';
+}
+
+function resolveConsensusTerm(payload) {
+  const directTerm = pickValue(payload, ['term', 'currentTerm'], null);
+  if (directTerm !== null && directTerm !== undefined) return String(directTerm);
+  const leader = pickValue(payload, ['leader'], null);
+  if (leader && typeof leader === 'object' && leader.term !== undefined && leader.term !== null) {
+    return String(leader.term);
+  }
+  return 'n/a';
+}
+
 function buildCardViewModel(payload, title = '') {
   if (payload === null || payload === undefined) {
     return { headline: 'n/a', pills: [] };
@@ -54,8 +78,8 @@ function buildCardViewModel(payload, title = '') {
     return {
       headline: status,
       pills: [
-        { label: 'role', value: String(pickValue(payload, ['leader', 'currentRole'], 'unknown')).toUpperCase() },
-        { label: 'term', value: String(pickValue(payload, ['term', 'currentTerm'], 'n/a')) },
+        { label: 'role', value: resolveConsensusRole(payload) },
+        { label: 'term', value: resolveConsensusTerm(payload) },
       ],
     };
   }
@@ -230,7 +254,7 @@ async function updateCard(cardElements, baseUrl, endpoint) {
     card.dataset.state = 'ok';
     metric.textContent = model.headline;
     setCardKpis(kpis, model.pills);
-    detail.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    detail.textContent = '';
   } catch (error) {
     card.dataset.state = 'error';
     metric.textContent = 'Unavailable';
@@ -264,16 +288,23 @@ export default function decorate(block) {
   const grid = document.createElement('div');
   grid.className = 'ops-metrics-grid';
 
+  const updated = document.createElement('p');
+  updated.className = 'ops-metrics-shell-updated';
+  updated.textContent = 'Updated --';
+
   const cards = endpointPairs.map(([title, endpoint]) => {
     const card = createCard(title);
     grid.append(card.card);
     return { endpoint, ...card };
   });
 
-  shell.append(heading, grid);
+  shell.append(heading, grid, updated);
   block.replaceChildren(shell);
 
-  const tick = () => Promise.all(cards.map((entry) => updateCard(entry, baseUrl, entry.endpoint)));
+  const tick = () => Promise.all(cards.map((entry) => updateCard(entry, baseUrl, entry.endpoint)))
+    .finally(() => {
+      updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    });
   tick();
   window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
 }
