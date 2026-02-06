@@ -62,7 +62,7 @@ function renderPressure(pressureEl, payload) {
   const queuePressure = payload.queuePressure || {};
   const types = payload.types || {};
   const parts = [
-    `pending ${formatMaybe(queuePressure.pending)}`,
+    `queue ${formatMaybe(queuePressure.queuePending ?? queuePressure.pending)}`,
     `mempool ${formatMaybe(queuePressure.mempool)}`,
     `backpressure ${formatMaybe(queuePressure.backpressurePending)}/${formatMaybe(queuePressure.backpressureMax)}`,
     `active ${queuePressure.backpressureActive ? 'yes' : 'no'}`,

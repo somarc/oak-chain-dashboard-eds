@@ -29,44 +29,89 @@ function pickValue(payload, keys, fallback) {
   return fallback;
 }
 
-function resolvePrimaryMetric(payload, title = '') {
-  if (payload === null || payload === undefined) return 'n/a';
+function asNum(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function buildCardViewModel(payload, title = '') {
+  if (payload === null || payload === undefined) {
+    return { headline: 'n/a', pills: [] };
+  }
+
   if (typeof payload === 'string' || typeof payload === 'number' || typeof payload === 'boolean') {
-    return String(payload);
+    return { headline: String(payload), pills: [] };
   }
 
   if (Array.isArray(payload)) {
-    return `${payload.length} item(s)`;
+    return { headline: `${payload.length} item(s)`, pills: [] };
   }
 
   const cardTitle = title.toLowerCase();
 
   if (cardTitle.includes('overview') || cardTitle.includes('consensus')) {
-    return `status: ${String(pickValue(payload, ['status'], 'unknown'))}`;
+    const status = String(pickValue(payload, ['status'], 'unknown')).toUpperCase();
+    return {
+      headline: status,
+      pills: [
+        { label: 'role', value: String(pickValue(payload, ['leader', 'currentRole'], 'unknown')).toUpperCase() },
+        { label: 'term', value: String(pickValue(payload, ['term', 'currentTerm'], 'n/a')) },
+      ],
+    };
   }
 
   if (cardTitle.includes('cluster')) {
     const state = pickValue(payload, ['clusterState', 'state'], 'unknown');
     const leader = pickValue(payload, ['leaderNodeId'], 'n/a');
-    return `state: ${state}, leader: ${leader}`;
+    const nodes = pickValue(payload, ['nodes'], []);
+    const nodeCount = Array.isArray(nodes) ? nodes.length : asNum(pickValue(payload, ['nodeCount'], 0), 0);
+    return {
+      headline: String(state).toUpperCase(),
+      pills: [
+        { label: 'leader', value: String(leader) },
+        { label: 'nodes', value: String(nodeCount) },
+      ],
+    };
   }
 
   if (cardTitle.includes('raft')) {
     const term = pickValue(payload, ['term', 'currentTerm'], 'n/a');
     const commit = pickValue(payload, ['commitIndex'], 'n/a');
-    return `term: ${term}, commit: ${commit}`;
+    const epoch = pickValue(payload, ['currentEpoch', 'epoch'], 'n/a');
+    return {
+      headline: `TERM ${term}`,
+      pills: [
+        { label: 'commit', value: String(commit) },
+        { label: 'epoch', value: String(epoch) },
+      ],
+    };
   }
 
   if (cardTitle.includes('replication')) {
     const lag = pickValue(payload, ['maxLagMs', 'replicationLag'], 'n/a');
     const status = pickValue(payload, ['status'], 'unknown');
-    return `maxLagMs: ${lag}, ${status}`;
+    const p95 = pickValue(payload, ['p95LagMs'], 'n/a');
+    return {
+      headline: `${lag} ms`,
+      pills: [
+        { label: 'status', value: String(status).toUpperCase() },
+        { label: 'p95', value: `${p95} ms` },
+      ],
+    };
   }
 
   if (cardTitle.includes('queue')) {
-    const pending = pickValue(payload, ['pendingCount', 'pending', 'batchQueueSize'], 0);
+    const queuePending = pickValue(payload, ['queuePendingCount', 'pendingCount', 'pending', 'batchQueueSize'], 0);
     const mempool = pickValue(payload, ['mempoolCount', 'mempool', 'mempoolPendingCount'], 0);
-    return `pending: ${pending}, mempool: ${mempool}`;
+    const backpressure = pickValue(payload, ['backpressurePendingCount'], 0);
+    return {
+      headline: `${queuePending}`,
+      pills: [
+        { label: 'queue', value: String(queuePending) },
+        { label: 'mempool', value: String(mempool) },
+        { label: 'backpressure', value: String(backpressure) },
+      ],
+    };
   }
 
   if (cardTitle.includes('health')) {
@@ -77,7 +122,14 @@ function resolvePrimaryMetric(payload, title = '') {
     const diskUsage = pickValue(deep.diskSpace || {}, ['usagePercent'], null);
     const ipfs = String(pickValue(deep.blobStore || {}, ['status'], 'unknown'));
     const diskLabel = diskUsage === null || diskUsage === undefined ? 'n/a' : `${diskUsage}%`;
-    return `status: ${status}, cluster: ${clusterReachable}/${clusterTotal}, disk: ${diskLabel}, ipfs: ${ipfs}`;
+    return {
+      headline: status.toUpperCase(),
+      pills: [
+        { label: 'cluster', value: `${clusterReachable}/${clusterTotal}` },
+        { label: 'disk', value: diskLabel },
+        { label: 'ipfs', value: ipfs.toUpperCase() },
+      ],
+    };
   }
 
   const priorityKeys = [
@@ -99,11 +151,11 @@ function resolvePrimaryMetric(payload, title = '') {
   for (let i = 0; i < priorityKeys.length; i += 1) {
     const key = priorityKeys[i];
     if (payload[key] !== undefined) {
-      return `${key}: ${String(payload[key])}`;
+      return { headline: String(payload[key]), pills: [{ label: key, value: String(payload[key]) }] };
     }
   }
 
-  return `${Object.keys(payload).length} field(s)`;
+  return { headline: `${Object.keys(payload).length} field(s)`, pills: [] };
 }
 
 function unwrapEnvelope(payload) {
@@ -125,20 +177,44 @@ function createCard(title) {
   metric.className = 'ops-metrics-card-metric';
   metric.textContent = 'Loading...';
 
+  const kpis = document.createElement('ul');
+  kpis.className = 'ops-metrics-card-kpis';
+
   const detail = document.createElement('p');
   detail.className = 'ops-metrics-card-detail';
   detail.textContent = 'Awaiting first sample';
 
-  card.append(heading, metric, detail);
-  return { card, metric, detail, title };
+  card.append(heading, metric, kpis, detail);
+  return { card, metric, kpis, detail, title };
+}
+
+function setCardKpis(kpisEl, pills) {
+  if (!Array.isArray(pills) || pills.length === 0) {
+    kpisEl.replaceChildren();
+    return;
+  }
+  const rows = pills.slice(0, 4).map((pill) => {
+    const li = document.createElement('li');
+    li.className = 'ops-metrics-kpi-pill';
+    const label = document.createElement('span');
+    label.className = 'ops-metrics-kpi-label';
+    label.textContent = pill.label;
+    const value = document.createElement('strong');
+    value.className = 'ops-metrics-kpi-value';
+    value.textContent = pill.value;
+    li.append(label, value);
+    return li;
+  });
+  kpisEl.replaceChildren(...rows);
 }
 
 async function updateCard(cardElements, baseUrl, endpoint) {
-  const { card, metric, detail } = cardElements;
+  const { card, metric, kpis, detail } = cardElements;
   const target = buildUrl(baseUrl, endpoint);
   if (!target) {
     card.dataset.state = 'error';
     metric.textContent = 'Missing endpoint';
+    setCardKpis(kpis, []);
     detail.textContent = 'Configure endpoint in block content.';
     return;
   }
@@ -150,12 +226,15 @@ async function updateCard(cardElements, baseUrl, endpoint) {
     }
 
     const payload = unwrapEnvelope(await response.json());
+    const model = buildCardViewModel(payload, cardElements.title);
     card.dataset.state = 'ok';
-    metric.textContent = resolvePrimaryMetric(payload, cardElements.title);
+    metric.textContent = model.headline;
+    setCardKpis(kpis, model.pills);
     detail.textContent = `Updated ${new Date().toLocaleTimeString()}`;
   } catch (error) {
     card.dataset.state = 'error';
     metric.textContent = 'Unavailable';
+    setCardKpis(kpis, []);
     detail.textContent = error.message;
   }
 }

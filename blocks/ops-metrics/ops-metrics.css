@@ -50,15 +50,51 @@
 
 .ops-metrics .ops-metrics-card-metric {
   margin: 0.6rem 0 0.25rem;
-  color: var(--brand-tertiary);
-  font-size: 1rem;
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-family: var(--mono-font-family);
+  letter-spacing: 0.01em;
+  word-break: break-word;
+}
+
+.ops-metrics .ops-metrics-card-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.2rem 0 0.7rem;
+  padding: 0;
+  list-style: none;
+}
+
+.ops-metrics .ops-metrics-kpi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(98, 126, 234, 0.38);
+  background: linear-gradient(145deg, rgba(98, 126, 234, 0.18), rgba(34, 211, 238, 0.08));
+}
+
+.ops-metrics .ops-metrics-kpi-label {
+  color: var(--text-tertiary);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ops-metrics .ops-metrics-kpi-value {
+  color: var(--text-primary);
+  font-size: 0.72rem;
   font-weight: 600;
   font-family: var(--mono-font-family);
-  word-break: break-word;
 }
 
 .ops-metrics .ops-metrics-card-detail {
   margin: auto 0 0;
   color: var(--text-secondary);
   font-size: 0.78rem;
+  border-top: 1px solid rgba(132, 152, 207, 0.16);
+  padding-top: 0.5rem;
 }
