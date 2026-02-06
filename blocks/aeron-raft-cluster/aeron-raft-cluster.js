@@ -32,6 +32,32 @@ function shortWallet(wallet) {
   return `${wallet.slice(0, 8)}...${wallet.slice(-6)}`;
 }
 
+function shortPublicKey(value) {
+  if (!value || typeof value !== 'string') return null;
+  const normalized = value.startsWith('0x') ? value : `0x${value}`;
+  if (normalized.length < 18) return normalized;
+  return `${normalized.slice(0, 10)}...${normalized.slice(-8)}`;
+}
+
+function resolveNodeIdentity(node) {
+  if (!node || typeof node !== 'object') return 'unknown';
+  const wallet = node.wallet
+    || node.walletAddress
+    || node.validatorWallet
+    || (node.validatorIdentity && node.validatorIdentity.walletAddress)
+    || null;
+  if (wallet) return shortWallet(wallet);
+
+  const pubKey = node.publicKey
+    || node.validatorPublicKey
+    || (node.validatorIdentity && node.validatorIdentity.publicKey)
+    || null;
+  const shortenedKey = shortPublicKey(pubKey);
+  if (shortenedKey) return shortenedKey;
+
+  return 'unknown';
+}
+
 function displayNodeId(node) {
   if (!node || typeof node !== 'object') return 'n/a';
   if (node.displayId !== undefined && node.displayId !== null) return node.displayId;
@@ -202,7 +228,7 @@ export default function decorate(block) {
 
         const wallet = document.createElement('p');
         wallet.className = 'aeron-raft-node-wallet';
-        wallet.textContent = shortWallet(node.wallet);
+        wallet.textContent = resolveNodeIdentity(node);
 
         const status = document.createElement('p');
         status.className = 'aeron-raft-node-status';
