@@ -8,13 +8,18 @@ import { loadFragment } from '../fragment/fragment.js';
 export default async function decorate(block) {
   // load footer as fragment
   const footerMeta = getMetadata('footer');
-  const footerPath = footerMeta ? new URL(footerMeta, window.location).pathname : '/footer';
-  const fragment = await loadFragment(footerPath);
+  const footerPath = footerMeta || '/footer';
+  let fragment = await loadFragment(footerPath);
+  if (!fragment && footerPath !== '/footer') {
+    fragment = await loadFragment('/footer');
+  }
 
   // decorate footer DOM
   block.textContent = '';
   const footer = document.createElement('div');
-  while (fragment.firstElementChild) footer.append(fragment.firstElementChild);
+  if (fragment) {
+    while (fragment.firstElementChild) footer.append(fragment.firstElementChild);
+  }
 
   block.append(footer);
 }
