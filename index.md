@@ -2,6 +2,15 @@
 
 API-first control plane observability for `oak-segment-consensus`, delivered through EDS blocks.
 
+---
+
+| Ops Sidebar Nav |
+| --- |
+| [Cluster Overview](/) |
+| [TarMK Storage](/tarmk) |
+
+---
+
 ## Live Cluster View
 
 | Ops Metrics |
@@ -12,9 +21,19 @@ API-first control plane observability for `oak-segment-consensus`, delivered thr
 | Proposal State Matrix |
 | --- |
 
+## Proposal Epoch Flow
+
+| Proposal Epoch Flow |
+| --- |
+
 ## Event Flow
 
 | Ops Feed |
+| --- |
+
+## Ops Signals
+
+| Ops Signals |
 | --- |
 
 ## Aeron Raft Cluster
@@ -27,20 +46,10 @@ API-first control plane observability for `oak-segment-consensus`, delivered thr
 | Ethereum Epoch Pipeline |
 | --- |
 
-## TarMK Growth State
-
-| TarMK Growth State |
-| --- |
-
-## TAR File Chain
-
-| TAR File Chain |
-| --- |
-
 ## Runbook Hooks
 
 - Validate cluster baseline with `/ops/v1/overview`, `/ops/v1/cluster`, and `/ops/v1/health`.
-- Confirm write path pressure with `/ops/v1/queue` and `/ops/v1/events/stats`.
+- Confirm write path pressure with `/ops/v1/queue`, `/ops/v1/signals`, and `/ops/v1/events/stats`.
 - Track leader and lag movement with `/ops/v1/cluster` and `/ops/v1/replication`.
 - Keep UI as a read model only; use API and CLI for operational actions.
 
@@ -57,5 +66,4 @@ API-first control plane observability for `oak-segment-consensus`, delivered thr
 | Health Deep |
 | Events Recent |
 | Events Stats |
-| TarMK Growth State |
-| TAR File Chain |
+| Ops Signals |

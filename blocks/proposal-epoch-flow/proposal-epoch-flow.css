@@ -1,0 +1,154 @@
+.proposal-epoch-flow .proposal-epoch-flow-meta {
+  display: inline-flex;
+  margin: 0 0 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--brand-secondary);
+  font-size: 0.8rem;
+  font-family: var(--mono-font-family);
+  line-height: 1;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card {
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(22, 33, 62, 0.8), rgba(16, 24, 44, 0.95));
+  padding: 0.85rem;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.28);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card.is-finalized {
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card.is-current {
+  border-color: rgba(34, 211, 238, 0.45);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card.is-next {
+  border-color: rgba(250, 204, 21, 0.4);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.7rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-epoch {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--mono-font-family);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-status {
+  margin: 0;
+  border: 1px solid rgba(34, 211, 238, 0.42);
+  border-radius: 999px;
+  padding: 0.2rem 0.58rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--brand-secondary);
+  font-family: var(--mono-font-family);
+  background: rgba(34, 211, 238, 0.14);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-metric {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 0.45rem 0.55rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-metric-label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-metric-value {
+  margin: 0.18rem 0 0;
+  color: var(--text-primary);
+  font-family: var(--mono-font-family);
+  font-size: 0.88rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-connector {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-connector-line {
+  display: block;
+  width: 2px;
+  height: 22px;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.7), rgba(148, 163, 184, 0.35));
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-connector-label {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-family: var(--mono-font-family);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-note {
+  margin: 0.7rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.79rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-updated {
+  margin: 0.45rem 0 0;
+  color: var(--text-tertiary);
+  font-size: 0.76rem;
+  font-family: var(--mono-font-family);
+}
+
+@media (width >= 900px) {
+  .proposal-epoch-flow .proposal-epoch-flow-rail {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.6rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+
+  .proposal-epoch-flow .proposal-epoch-flow-card {
+    min-width: 260px;
+    flex: 1 1 0;
+  }
+
+  .proposal-epoch-flow .proposal-epoch-flow-connector {
+    min-width: 86px;
+    align-self: center;
+  }
+
+  .proposal-epoch-flow .proposal-epoch-flow-connector-line {
+    width: 54px;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.7), rgba(148, 163, 184, 0.35));
+  }
+
+}

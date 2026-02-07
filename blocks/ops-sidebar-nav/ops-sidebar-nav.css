@@ -1,0 +1,102 @@
+.ops-sidebar-nav {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.ops-sidebar-nav .ops-sidebar-nav-shell {
+  border-radius: 14px;
+  border: 1px solid var(--border-primary);
+  background: linear-gradient(160deg, rgba(20, 32, 61, 0.95), rgba(14, 21, 40, 0.95));
+  padding: 0.9rem;
+}
+
+.ops-sidebar-nav .ops-sidebar-nav-title {
+  margin: 0 0 0.65rem;
+  color: var(--text-tertiary);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.ops-sidebar-nav .ops-sidebar-nav-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+}
+
+.ops-sidebar-nav .ops-sidebar-nav-item {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.ops-sidebar-nav .ops-sidebar-nav-link {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(98, 126, 234, 0.34);
+  background: rgba(98, 126, 234, 0.13);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: var(--mono-font-family);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  white-space: nowrap;
+}
+
+.ops-sidebar-nav .ops-sidebar-nav-link[aria-current='page'] {
+  border-color: rgba(34, 211, 238, 0.7);
+  background: rgba(34, 211, 238, 0.18);
+  color: #d2fbff;
+}
+
+@media (width >= 1100px) {
+  main.has-ops-sidebar-nav {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 0 1.1rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px 28px;
+  }
+
+  main.has-ops-sidebar-nav > div {
+    margin: 34px 0 0;
+    max-width: none;
+    width: auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  main.has-ops-sidebar-nav > div.ops-sidebar-nav-container {
+    grid-column: 1;
+    position: sticky;
+    top: calc(var(--nav-height) + 14px);
+    align-self: start;
+    z-index: 3;
+  }
+
+  main.has-ops-sidebar-nav > div:not(.ops-sidebar-nav-container) {
+    grid-column: 2;
+  }
+
+  main.has-ops-sidebar-nav > div.ops-sidebar-nav-container .ops-sidebar-nav {
+    margin: 0;
+  }
+
+  .ops-sidebar-nav .ops-sidebar-nav-list {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .ops-sidebar-nav .ops-sidebar-nav-link {
+    display: block;
+    border-radius: 10px;
+    padding: 0.5rem 0.6rem;
+  }
+}

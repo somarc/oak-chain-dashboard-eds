@@ -88,7 +88,9 @@ export default function decorate(block) {
         stageCard('Finalized Epoch', data.finalizedEpoch ?? 0, `${gap} epoch(s) until finality`, 'stage-finalized'),
       );
 
-      footer.textContent = `Total queued: ${data.totalQueued ?? 0} • Total finalized: ${data.totalFinalized ?? 0} • Finality gap: ${gap}`;
+      const finalizedCurrent = data.totalFinalized ?? 0;
+      const finalizedLifetime = data.totalFinalizedLifetime ?? finalizedCurrent;
+      footer.textContent = `Total queued: ${data.totalQueued ?? 0} • Finalized (window): ${finalizedCurrent} • Finalized (lifetime): ${finalizedLifetime} • Finality gap: ${gap}`;
     } catch (error) {
       stages.innerHTML = '';
       footer.textContent = `Finality pipeline unavailable: ${error.message}`;

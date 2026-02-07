@@ -81,7 +81,77 @@ function resolveGraphOrder(nodes) {
   return sorted;
 }
 
-function renderTriangleGraph(container, nodes, selfNodeId) {
+function buildGraphLayout(count) {
+  if (count <= 3) {
+    return {
+      viewBox: '0 0 600 340',
+      positions: [
+        { x: 300, y: 78 },
+        { x: 145, y: 260 },
+        { x: 455, y: 260 },
+      ].slice(0, count),
+    };
+  }
+
+  if (count === 5) {
+    return {
+      viewBox: '0 0 760 430',
+      positions: [
+        { x: 380, y: 72 },
+        { x: 185, y: 175 },
+        { x: 575, y: 175 },
+        { x: 255, y: 330 },
+        { x: 505, y: 330 },
+      ],
+    };
+  }
+
+  const cx = 420;
+  const cy = 220;
+  const radius = Math.max(130, Math.min(190, 250 - (count * 4)));
+  const positions = [];
+  for (let i = 0; i < count; i += 1) {
+    const angle = (-Math.PI / 2) + ((2 * Math.PI * i) / count);
+    positions.push({
+      x: cx + (Math.cos(angle) * radius),
+      y: cy + (Math.sin(angle) * radius),
+    });
+  }
+  return {
+    viewBox: '0 0 840 440',
+    positions,
+  };
+}
+
+function buildEdges(graphNodes) {
+  const n = graphNodes.length;
+  const edges = [];
+  if (n <= 1) return edges;
+
+  if (n <= 3) {
+    for (let i = 0; i < n; i += 1) {
+      for (let j = i + 1; j < n; j += 1) {
+        edges.push([i, j, 'mesh']);
+      }
+    }
+    return edges;
+  }
+
+  for (let i = 0; i < n; i += 1) {
+    edges.push([i, (i + 1) % n, 'ring']);
+  }
+
+  const leaderIdx = graphNodes.findIndex((node) => String(node.role || '').toUpperCase() === 'LEADER');
+  if (leaderIdx >= 0) {
+    for (let i = 0; i < n; i += 1) {
+      if (i !== leaderIdx) edges.push([leaderIdx, i, 'leader-link']);
+    }
+  }
+
+  return edges;
+}
+
+function renderTopologyGraph(container, nodes, selfNodeId) {
   container.innerHTML = '';
 
   if (!Array.isArray(nodes) || !nodes.length) {
@@ -92,32 +162,29 @@ function renderTriangleGraph(container, nodes, selfNodeId) {
     return;
   }
 
-  const graphNodes = resolveGraphOrder(nodes).slice(0, 3);
-  const positions = [
-    { x: 300, y: 78 },
-    { x: 145, y: 260 },
-    { x: 455, y: 260 },
-  ];
+  const graphNodes = resolveGraphOrder(nodes);
+  const { viewBox, positions } = buildGraphLayout(graphNodes.length);
+  const dotRadius = graphNodes.length >= 6 ? 28 : (graphNodes.length >= 5 ? 32 : 40);
 
   const wrap = document.createElement('div');
   wrap.className = 'aeron-raft-graph-wrap';
+  if (graphNodes.length > 3) wrap.classList.add('is-multi');
 
   const svg = svgEl('svg', {
-    viewBox: '0 0 600 340',
-    class: 'aeron-raft-graph',
+    viewBox,
+    class: `aeron-raft-graph size-${graphNodes.length}`,
     role: 'img',
     'aria-label': 'Aeron cluster topology graph',
   });
 
-  [[0, 1], [1, 2], [0, 2]].forEach(([a, b]) => {
-    if (!graphNodes[a] || !graphNodes[b]) return;
+  buildEdges(graphNodes).forEach(([a, b, kind]) => {
     const active = graphNodes[a].reachable !== false && graphNodes[b].reachable !== false;
     svg.append(svgEl('line', {
       x1: positions[a].x,
       y1: positions[a].y,
       x2: positions[b].x,
       y2: positions[b].y,
-      class: `aeron-raft-edge ${active ? 'is-active' : 'is-muted'}`,
+      class: `aeron-raft-edge ${active ? 'is-active' : 'is-muted'} ${kind}`,
     }));
   });
 
@@ -128,14 +195,14 @@ function renderTriangleGraph(container, nodes, selfNodeId) {
       transform: `translate(${pos.x}, ${pos.y})`,
     });
 
-    group.append(svgEl('circle', { r: 40, class: 'dot-bg' }));
-    group.append(svgEl('circle', { r: 40, class: 'dot-border' }));
+    group.append(svgEl('circle', { r: dotRadius, class: 'dot-bg' }));
+    group.append(svgEl('circle', { r: dotRadius, class: 'dot-border' }));
 
-    const label = svgEl('text', { x: 0, y: -6, class: 'dot-label' });
+    const label = svgEl('text', { x: 0, y: -5, class: 'dot-label' });
     label.textContent = `Node ${displayNodeId(node)}`;
     group.append(label);
 
-    const role = svgEl('text', { x: 0, y: 14, class: 'dot-role' });
+    const role = svgEl('text', { x: 0, y: 12, class: 'dot-role' });
     role.textContent = String(node.role || 'UNKNOWN');
     group.append(role);
 
@@ -211,7 +278,7 @@ export default function decorate(block) {
         stats.append(item);
       });
 
-      renderTriangleGraph(graph, cluster.nodes || [], selfNodeId);
+      renderTopologyGraph(graph, cluster.nodes || [], selfNodeId);
 
       nodes.innerHTML = '';
       (cluster.nodes || []).forEach((node) => {

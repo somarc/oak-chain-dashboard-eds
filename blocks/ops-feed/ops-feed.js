@@ -53,7 +53,70 @@ function renderEvent(event) {
   return li;
 }
 
-async function refresh({ list, meta, baseUrl, recentEventsUrl, eventStatsUrl }) {
+function rankEntries(mapLike = {}) {
+  return Object.entries(mapLike || {})
+    .map(([key, value]) => ({ key, value: Number(value) || 0 }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function renderSummary(summary, statsPayload, events) {
+  const bySeverity = rankEntries(statsPayload.bySeverity || {});
+  const byType = rankEntries(statsPayload.byType || {});
+  const total = Number(statsPayload.total24h || statsPayload.totalEventsBroadcast || statsPayload.total || events.length || 0);
+  const topSeverity = bySeverity[0] || { key: 'info', value: 0 };
+  const topType = byType[0] || { key: 'EVENT', value: 0 };
+  const eventRate = events.length;
+
+  const stats = summary.querySelector('.ops-feed-summary-stats');
+  if (stats) {
+    stats.innerHTML = `
+      <div class="ops-feed-stat">
+        <p class="ops-feed-stat-label">Recent Window</p>
+        <p class="ops-feed-stat-value">${eventRate} events</p>
+        <p class="ops-feed-stat-detail">Top severity: ${topSeverity.key} (${topSeverity.value})</p>
+      </div>
+      <div class="ops-feed-stat">
+        <p class="ops-feed-stat-label">24h Total</p>
+        <p class="ops-feed-stat-value">${total}</p>
+        <p class="ops-feed-stat-detail">Top type: ${topType.key} (${topType.value})</p>
+      </div>
+    `;
+  }
+
+  const maxSeverity = Math.max(...bySeverity.map((v) => v.value), 1);
+  const maxType = Math.max(...byType.map((v) => v.value), 1);
+
+  const severityBars = summary.querySelector('.ops-feed-severity');
+  const typeBars = summary.querySelector('.ops-feed-types');
+  if (severityBars) {
+    severityBars.replaceChildren(...bySeverity.slice(0, 4).map((entry) => {
+      const row = document.createElement('div');
+      row.className = 'ops-feed-bar';
+      row.innerHTML = `
+        <span class="ops-feed-bar-label">${entry.key}</span>
+        <span class="ops-feed-bar-track"><span class="ops-feed-bar-fill" style="width:${Math.max(6, (entry.value / maxSeverity) * 100)}%"></span></span>
+        <span class="ops-feed-bar-value">${entry.value}</span>
+      `;
+      return row;
+    }));
+  }
+  if (typeBars) {
+    typeBars.replaceChildren(...byType.slice(0, 4).map((entry) => {
+      const row = document.createElement('div');
+      row.className = 'ops-feed-bar';
+      row.innerHTML = `
+        <span class="ops-feed-bar-label">${entry.key}</span>
+        <span class="ops-feed-bar-track"><span class="ops-feed-bar-fill" style="width:${Math.max(6, (entry.value / maxType) * 100)}%"></span></span>
+        <span class="ops-feed-bar-value">${entry.value}</span>
+      `;
+      return row;
+    }));
+  }
+}
+
+async function refresh({
+  list, meta, summary, updated, baseUrl, recentEventsUrl, eventStatsUrl,
+}) {
   try {
     const [recentResponse, statsResponse] = await Promise.all([
       fetch(recentEventsUrl, { headers: { Accept: 'application/json' } }),
@@ -82,12 +145,20 @@ async function refresh({ list, meta, baseUrl, recentEventsUrl, eventStatsUrl }) 
 
     const count = statsPayload.totalEvents || statsPayload.total || events.length;
     meta.textContent = `${count} total events observed from ${baseUrl}`;
+    updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    renderSummary(summary, statsPayload, events);
   } catch (error) {
     list.replaceChildren();
     const li = document.createElement('li');
     li.className = 'ops-feed-item ops-feed-item-error';
     li.textContent = `Feed unavailable: ${error.message}`;
     list.append(li);
+    const stats = summary.querySelector('.ops-feed-summary-stats');
+    const severity = summary.querySelector('.ops-feed-severity');
+    const types = summary.querySelector('.ops-feed-types');
+    if (stats) stats.innerHTML = '';
+    if (severity) severity.replaceChildren();
+    if (types) types.replaceChildren();
     meta.textContent = 'Awaiting event stream';
   }
 }
@@ -114,13 +185,27 @@ export default function decorate(block) {
   meta.className = 'ops-feed-meta';
   meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
 
+  const summary = document.createElement('div');
+  summary.className = 'ops-feed-summary';
+  summary.innerHTML = `
+    <div class="ops-feed-summary-stats"></div>
+    <div class="ops-feed-severity"></div>
+    <div class="ops-feed-types"></div>
+  `;
+
   const list = document.createElement('ul');
   list.className = 'ops-feed-list';
 
-  shell.append(meta, list);
+  const updated = document.createElement('p');
+  updated.className = 'ops-feed-updated';
+  updated.textContent = 'Updated --';
+
+  shell.append(meta, summary, list, updated);
   block.replaceChildren(shell);
 
-  const tick = () => refresh({ list, meta, baseUrl, recentEventsUrl, eventStatsUrl });
+  const tick = () => refresh({
+    list, meta, summary, updated, baseUrl, recentEventsUrl, eventStatsUrl,
+  });
   tick();
   window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
 }

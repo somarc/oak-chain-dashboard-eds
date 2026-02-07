@@ -64,3 +64,10 @@
   color: var(--text-secondary);
   font-size: 0.79rem;
 }
+
+.proposal-state-matrix .proposal-state-matrix-updated {
+  margin: 0.45rem 0 0;
+  color: var(--text-tertiary);
+  font-size: 0.76rem;
+  font-family: var(--mono-font-family);
+}

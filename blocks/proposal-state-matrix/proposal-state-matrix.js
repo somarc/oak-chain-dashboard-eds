@@ -61,6 +61,8 @@ function renderMatrix(tableBody, payload) {
 function renderPressure(pressureEl, payload) {
   const queuePressure = payload.queuePressure || {};
   const types = payload.types || {};
+  const statesLifetime = payload.statesLifetime || {};
+  const routing = payload.routing || {};
   const parts = [
     `queue ${formatMaybe(queuePressure.queuePending ?? queuePressure.pending)}`,
     `mempool ${formatMaybe(queuePressure.mempool)}`,
@@ -69,17 +71,21 @@ function renderPressure(pressureEl, payload) {
     `write ${formatMaybe(types.write)}`,
     `delete ${formatMaybe(types.delete)}`,
     `total ${formatMaybe(types.total)}`,
+    `finalized(life) ${formatMaybe(statesLifetime.finalized)}`,
+    `sent(life) ${formatMaybe(routing.sentLifetime)}`,
   ];
   pressureEl.textContent = parts.join(' • ');
 }
 
 function renderAvailability(noteEl, payload) {
   const availability = payload?.stateByType?.availability;
+  const statesLifetime = payload?.statesLifetime || {};
+  const lifetimeNote = `Lifetime totals: verified=${formatMaybe(statesLifetime.verified)} finalized=${formatMaybe(statesLifetime.finalized)} rejected=${formatMaybe(statesLifetime.rejected)}.`;
   if (availability === 'needs_upstream_counters') {
-    noteEl.textContent = 'Per-type state splits require additional upstream counters; total row reflects authoritative state counts.';
+    noteEl.textContent = `Per-type state splits require additional upstream counters; total row reflects authoritative current-window counts. ${lifetimeNote}`;
     return;
   }
-  noteEl.textContent = 'State and type counters sourced from queue stats.';
+  noteEl.textContent = `State and type counters sourced from queue stats (current window). ${lifetimeNote}`;
 }
 
 export default function decorate(block) {
@@ -120,7 +126,11 @@ export default function decorate(block) {
   const note = document.createElement('p');
   note.className = 'proposal-state-matrix-note';
 
-  shell.append(meta, pressure, table, note);
+  const updated = document.createElement('p');
+  updated.className = 'proposal-state-matrix-updated';
+  updated.textContent = 'Updated --';
+
+  shell.append(meta, pressure, table, note, updated);
   block.replaceChildren(shell);
 
   async function refresh() {
@@ -140,7 +150,8 @@ export default function decorate(block) {
       renderPressure(pressure, payload);
       renderMatrix(body, payload);
       renderAvailability(note, payload);
-      meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s • Updated ${new Date().toLocaleTimeString()}`;
+      meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
+      updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     } catch (error) {
       pressure.textContent = `Proposal state unavailable: ${error.message}`;
       renderMatrix(body, { states: {}, stateByType: { write: {}, delete: {} } });

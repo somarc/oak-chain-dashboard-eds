@@ -43,6 +43,10 @@
   margin: 0 auto;
 }
 
+.aeron-raft-cluster .aeron-raft-graph-wrap.is-multi {
+  max-width: 860px;
+}
+
 .aeron-raft-cluster .aeron-raft-graph {
   width: 100%;
   height: auto;
@@ -60,6 +64,11 @@
 .aeron-raft-cluster .aeron-raft-edge.is-muted {
   stroke: rgba(120, 132, 156, 0.35);
   stroke-dasharray: 5 5;
+}
+
+.aeron-raft-cluster .aeron-raft-edge.leader-link {
+  stroke-dasharray: 3 7;
+  stroke-width: 2.2;
 }
 
 .aeron-raft-cluster .aeron-raft-node-dot .dot-bg {
@@ -100,6 +109,22 @@
   text-anchor: middle;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.aeron-raft-cluster .aeron-raft-graph.size-5 .dot-label,
+.aeron-raft-cluster .aeron-raft-graph.size-6 .dot-label,
+.aeron-raft-cluster .aeron-raft-graph.size-7 .dot-label,
+.aeron-raft-cluster .aeron-raft-graph.size-8 .dot-label,
+.aeron-raft-cluster .aeron-raft-graph.size-9 .dot-label {
+  font-size: 12px;
+}
+
+.aeron-raft-cluster .aeron-raft-graph.size-5 .dot-role,
+.aeron-raft-cluster .aeron-raft-graph.size-6 .dot-role,
+.aeron-raft-cluster .aeron-raft-graph.size-7 .dot-role,
+.aeron-raft-cluster .aeron-raft-graph.size-8 .dot-role,
+.aeron-raft-cluster .aeron-raft-graph.size-9 .dot-role {
+  font-size: 9px;
 }
 
 .aeron-raft-cluster .aeron-raft-node-dot.is-leader .dot-role {
