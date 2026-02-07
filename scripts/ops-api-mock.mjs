@@ -274,6 +274,65 @@ async function upstreamGetSnapshot(path, fallbackPath, baseUrl = UPSTREAM_BASE) 
   return upstreamGetFromBase(fallbackPath, baseUrl);
 }
 
+function maxField(records, field) {
+  return records.reduce((max, record) => {
+    const value = toNum(pick(record, [field], 0), 0);
+    return value > max ? value : max;
+  }, 0);
+}
+
+async function resolveClusterQueueSnapshot(leaderBase) {
+  const primary = await upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', leaderBase);
+  let snapshots = [primary];
+
+  try {
+    const identities = await upstreamGetFromBase('/v1/aeron/validator-identities', leaderBase);
+    const validators = Array.isArray(pick(identities, ['validators'], []))
+      ? pick(identities, ['validators'], [])
+      : [];
+    const urls = validators
+      .map((v) => pick(v, ['url'], null))
+      .filter((v) => typeof v === 'string' && v.length > 0);
+
+    if (urls.length > 0) {
+      const settled = await Promise.allSettled(
+        urls.map((base) => upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', base)),
+      );
+      const fetched = settled
+        .filter((result) => result.status === 'fulfilled' && result.value && typeof result.value === 'object')
+        .map((result) => result.value);
+      if (fetched.length > 0) {
+        snapshots = fetched;
+      }
+    }
+  } catch (_e) {
+    // Keep primary snapshot when identity fan-out is unavailable.
+  }
+
+  const merged = { ...primary };
+  const monotonicFields = [
+    'totalVerifiedCount',
+    'totalFinalizedCount',
+    'totalProposals',
+    'writeProposals',
+    'deleteProposals',
+    'totalRejectedCount',
+    'verifierRejectedCount',
+    'maxRetryCount',
+  ];
+  monotonicFields.forEach((field) => {
+    merged[field] = maxField(snapshots, field);
+  });
+
+  // For live pressure signals, retain the "worst" across validators.
+  merged.pendingCount = maxField(snapshots, 'pendingCount');
+  merged.unverifiedQueueSize = maxField(snapshots, 'unverifiedQueueSize');
+  merged.mempoolPendingCount = maxField(snapshots, 'mempoolPendingCount');
+  merged.batchQueueSize = maxField(snapshots, 'batchQueueSize');
+
+  return merged;
+}
+
 async function resolveLeaderUpstreamBase() {
   try {
     const consensus = await upstreamGet('/v1/consensus/status');
@@ -518,7 +577,7 @@ async function resolveReplication() {
 
 async function resolveQueue() {
   const leaderBase = await resolveLeaderUpstreamBase();
-  const queue = await upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', leaderBase);
+  const queue = await resolveClusterQueueSnapshot(leaderBase);
   const signals = resolveQueueSignals(queue);
   const epochDepthResolved = Math.max(
     toNum(pick(queue, ['epochQueueDepth', 'epochDepth', 'epochsUntilFinality'], 0), 0),
@@ -541,7 +600,7 @@ async function resolveQueue() {
 
 async function resolveProposals() {
   const leaderBase = await resolveLeaderUpstreamBase();
-  const queue = await upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', leaderBase);
+  const queue = await resolveClusterQueueSnapshot(leaderBase);
   const signals = resolveQueueSignals(queue);
 
   const writeTotal = toNum(pick(queue, ['writeProposals'], 0), 0);
@@ -551,18 +610,29 @@ async function resolveProposals() {
     writeTotal + deleteTotal,
   );
   const finalized = toNum(pick(queue, ['totalFinalizedCount'], 0), 0);
+  const finalizedLifetime = toNum(pick(queue, ['totalFinalizedCountLifetime', 'totalFinalizedCount'], 0), 0);
   const verified = Math.max(
     toNum(pick(queue, ['totalVerifiedCount', 'verifiedCount'], 0), 0),
+    0,
+  );
+  const verifiedLifetime = Math.max(
+    toNum(pick(queue, ['totalVerifiedCountLifetime', 'totalVerifiedCount', 'verifiedCount'], 0), 0),
     0,
   );
   const rejected = Math.max(
     toNum(pick(queue, ['totalRejectedCount', 'rejectedCount', 'verifierRejectedCount'], 0), 0),
     0,
   );
+  const rejectedLifetime = Math.max(
+    toNum(pick(queue, ['totalRejectedCountLifetime', 'totalRejectedCount', 'rejectedCount', 'verifierRejectedCount'], 0), 0),
+    0,
+  );
   const unverified = Math.max(
     toNum(pick(queue, ['unverifiedQueueSize'], 0), 0) + toNum(pick(queue, ['pendingCount'], 0), 0),
     0,
   );
+  const totalSentCurrent = toNum(pick(queue, ['totalProposalsSent'], 0), 0);
+  const totalSentLifetime = toNum(pick(queue, ['totalProposalsSentLifetime', 'totalProposalsSent'], 0), 0);
 
   return {
     queuePressure: {
@@ -581,10 +651,19 @@ async function resolveProposals() {
       finalized,
       rejected,
     },
+    statesLifetime: {
+      verified: verifiedLifetime,
+      finalized: finalizedLifetime,
+      rejected: rejectedLifetime,
+    },
     types: {
       write: writeTotal,
       delete: deleteTotal,
       total: totalProposals,
+    },
+    routing: {
+      sentCurrent: totalSentCurrent,
+      sentLifetime: totalSentLifetime,
     },
     // Current upstream queue stats expose per-state totals and per-type totals separately.
     // Per-type state slices are not yet available as first-class counters.
@@ -610,6 +689,85 @@ async function resolveProposals() {
       pendingEpochs: signals.pendingEpochs,
       totalQueued: signals.totalQueuedFromStats !== null ? signals.totalQueuedFromStats : totalProposals,
     },
+  };
+}
+
+async function resolveProposalEpochs() {
+  try {
+    const leaderBase = await resolveLeaderUpstreamBase();
+    const upstream = await upstreamGetFromBase('/v1/proposals/epochs', leaderBase);
+    if (upstream && Array.isArray(upstream.blocks) && upstream.blocks.length > 0) {
+      return upstream;
+    }
+  } catch (_e) {
+    // Fall back to derived payload while upstream endpoint rolls out.
+  }
+
+  const proposals = await resolveProposals();
+  const states = pick(proposals, ['states'], {});
+  const queuePressure = pick(proposals, ['queuePressure'], {});
+  const epochs = pick(proposals, ['epochs'], {});
+
+  const currentEpoch = toNum(pick(epochs, ['currentEpoch'], 0), 0);
+  const finalizedEpoch = toNum(pick(epochs, ['finalizedEpoch'], 0), 0);
+  const pendingEpochs = Math.max(toNum(pick(epochs, ['pendingEpochs'], 0), 0), 0);
+
+  const totalVerified = Math.max(toNum(pick(states, ['verified'], 0), 0), 0);
+  const totalFinalized = Math.max(toNum(pick(states, ['finalized'], 0), 0), 0);
+  const inFlightVerified = Math.max(totalVerified - totalFinalized, 0);
+  const totalRejected = Math.max(toNum(pick(states, ['rejected'], 0), 0), 0);
+  const unverified = Math.max(toNum(pick(states, ['unverified'], 0), 0), 0);
+  const pendingCarry = Math.max(toNum(pick(queuePressure, ['pending', 'queuePending'], 0), 0), 0);
+
+  const nextEpoch = currentEpoch > finalizedEpoch ? finalizedEpoch + 1 : currentEpoch;
+
+  const blocks = [
+    {
+      epoch: finalizedEpoch,
+      status: 'finalized',
+      label: 'Finalized',
+      counts: {
+        unverified: 0,
+        verified: 0,
+        finalized: totalFinalized,
+        rejected: totalRejected,
+      },
+      flowToNext: inFlightVerified,
+    },
+    {
+      epoch: nextEpoch,
+      status: 'next',
+      label: 'Next to be Finalized',
+      counts: {
+        verified: inFlightVerified,
+        unverified: 0,
+        finalized: 0,
+        rejected: 0,
+      },
+      flowToNext: unverified + pendingCarry,
+    },
+    {
+      epoch: currentEpoch,
+      status: 'current',
+      label: 'Current',
+      counts: {
+        unverified: pendingCarry,
+        verified: 0,
+        finalized: 0,
+        rejected: 0,
+      },
+      flowToNext: 0,
+    },
+  ];
+
+  return {
+    currentEpoch,
+    finalizedEpoch,
+    pendingEpochs,
+    epochsUntilFinality: Math.max(toNum(pick(epochs, ['epochsUntilFinality'], 0), 0), 0),
+    source: 'aggregate-counters',
+    note: 'Epoch blocks are derived from aggregate counters until first-class per-epoch counters are available upstream.',
+    blocks,
   };
 }
 
@@ -747,6 +905,7 @@ async function resolveFinality() {
       : toNum(pick(queue, ['totalProposals', 'writeProposals'], 0), 0),
     backpressurePending: signals.backpressurePending,
     totalFinalized: toNum(pick(queue, ['totalFinalizedCount'], 0), 0),
+    totalFinalizedLifetime: toNum(pick(queue, ['totalFinalizedCountLifetime', 'totalFinalizedCount'], 0), 0),
   };
 }
 
@@ -979,10 +1138,19 @@ function handle(req, res) {
         finalized: 9440,
         rejected: 24,
       },
+      statesLifetime: {
+        verified: 19698,
+        finalized: 19440,
+        rejected: 31,
+      },
       types: {
         write: 12186,
         delete: 88,
         total: 12274,
+      },
+      routing: {
+        sentCurrent: 12274,
+        sentLifetime: 24274,
       },
       stateByType: {
         write: {
@@ -1006,6 +1174,41 @@ function handle(req, res) {
         pendingEpochs: 3,
         totalQueued: 12186,
       },
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/proposals/epochs' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      currentEpoch: 1057,
+      finalizedEpoch: 1055,
+      pendingEpochs: 3,
+      epochsUntilFinality: 2,
+      source: 'aggregate-counters',
+      note: 'Epoch blocks are derived from aggregate counters until first-class per-epoch counters are available upstream.',
+      blocks: [
+        {
+          epoch: 1055,
+          status: 'finalized',
+          label: 'Finalized',
+          counts: { unverified: 0, verified: 0, finalized: 9440, rejected: 24 },
+          flowToNext: 258,
+        },
+        {
+          epoch: 1056,
+          status: 'next',
+          label: 'Next to be Finalized',
+          counts: { unverified: 0, verified: 258, finalized: 0, rejected: 0 },
+          flowToNext: 2488,
+        },
+        {
+          epoch: 1057,
+          status: 'current',
+          label: 'Current',
+          counts: { unverified: 2488, verified: 0, finalized: 0, rejected: 0 },
+          flowToNext: 0,
+        },
+      ],
     }));
     return;
   }
@@ -1074,6 +1277,7 @@ function handle(req, res) {
       pendingEpochs: 3,
       totalQueued: 12186,
       totalFinalized: 9698,
+      totalFinalizedLifetime: 19698,
     }));
     return;
   }
@@ -1153,6 +1357,10 @@ function handle(req, res) {
       }
       if (path === '/ops/v1/proposals') {
         sendJson(res, 200, envelope(await resolveProposals()));
+        return;
+      }
+      if (path === '/ops/v1/proposals/epochs') {
+        sendJson(res, 200, envelope(await resolveProposalEpochs()));
         return;
       }
       if (path === '/ops/v1/durability') {

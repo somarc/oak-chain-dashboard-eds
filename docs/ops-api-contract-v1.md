@@ -419,6 +419,163 @@ Purpose: proposal queue pressure + state lifecycle counts + type breakdown for m
 }
 ```
 
+### 16) `GET /ops/v1/proposals/epochs`
+
+Purpose: authoritative epoch residency and priority-lane flow for proposal lifecycle.
+
+This endpoint is the primary control-plane view for understanding:
+
+- How much load is currently on the Aeron fast path (`priority`)
+- How much is buffered in epoch windows (`express`, `standard`)
+- Whether epoch staging is reducing TarMK DAG fanout by packing writes before finality
+
+`data` shape:
+
+```json
+{
+  "currentEpoch": 1057,
+  "finalizedEpoch": 1055,
+  "pendingEpochs": 3,
+  "epochsUntilFinality": 2,
+  "source": "upstream-epoch-counters",
+  "note": "All counters are epoch-resident and priority-aware.",
+  "blocks": [
+    {
+      "label": "Finalized",
+      "epoch": 1055,
+      "status": "finalized",
+      "byPriority": {
+        "standard": { "unverified": 0, "verified": 0, "finalized": 6040, "rejected": 4 },
+        "express": { "unverified": 0, "verified": 0, "finalized": 3020, "rejected": 2 },
+        "priority": { "unverified": 0, "verified": 0, "finalized": 380, "rejected": 0 }
+      },
+      "totals": { "unverified": 0, "verified": 0, "finalized": 9440, "rejected": 6 },
+      "flowToNext": 258
+    },
+    {
+      "label": "Next to be Finalized",
+      "epoch": 1056,
+      "status": "next",
+      "byPriority": {
+        "standard": { "unverified": 0, "verified": 150, "finalized": 0, "rejected": 0 },
+        "express": { "unverified": 0, "verified": 80, "finalized": 0, "rejected": 0 },
+        "priority": { "unverified": 0, "verified": 28, "finalized": 0, "rejected": 0 }
+      },
+      "totals": { "unverified": 0, "verified": 258, "finalized": 0, "rejected": 0 },
+      "flowToNext": 2488
+    },
+    {
+      "label": "Current",
+      "epoch": 1057,
+      "status": "current",
+      "byPriority": {
+        "standard": { "unverified": 1900, "verified": 0, "finalized": 0, "rejected": 0 },
+        "express": { "unverified": 420, "verified": 0, "finalized": 0, "rejected": 0 },
+        "priority": { "unverified": 168, "verified": 0, "finalized": 0, "rejected": 0 }
+      },
+      "totals": { "unverified": 2488, "verified": 0, "finalized": 0, "rejected": 0 },
+      "flowToNext": 0
+    }
+  ],
+  "aeronLoad": {
+    "priorityIngressRatePerSec": 132,
+    "priorityPendingAcks": 14,
+    "priorityAckLatencyP95Ms": 18,
+    "priorityBackpressurePending": 9
+  },
+  "packing": {
+    "writesBufferedCurrentEpoch": 2320,
+    "writesReleasedAtFinality": 9440,
+    "estimatedFanoutReductionPct": 41.2
+  }
+}
+```
+
+Required upstream semantics:
+
+- Every proposal is assigned immutable metadata at ingest:
+  - `priorityClass`: `standard | express | priority`
+  - `ingestEpoch`
+  - `targetFinalityEpoch` (`+2`, `+1`, or immediate)
+- Counters are maintained by `(epoch, priorityClass, state)` and rolled forward by epoch transitions.
+- Dashboard adapters must not infer epoch residency from global aggregate counters when first-class epoch counters are available.
+
+### 17) `GET /ops/v1/signals`
+
+Purpose: generalized operational telemetry surface for dashboard alerting, independent of individual card payloads.
+
+Design goals:
+
+- Keep payload lightweight and cache-friendly.
+- Expose severity-normalized signals (`ok|warn|critical|unknown`).
+- Preserve source attribution and explicit gaps (`available=false`) for missing upstream counters.
+
+`data` shape:
+
+```json
+{
+  "status": "warn",
+  "summary": {
+    "critical": 1,
+    "warn": 2,
+    "ok": 9,
+    "unknown": 2
+  },
+  "categories": [
+    "cluster",
+    "queue",
+    "durability",
+    "replication",
+    "aeron",
+    "storage",
+    "api"
+  ],
+  "signals": [
+    {
+      "id": "queue.pending",
+      "label": "Queue Pending",
+      "category": "queue",
+      "value": 2488,
+      "unit": "count",
+      "severity": "warn",
+      "source": "/v1/proposals/queue/stats",
+      "description": "Queued proposals waiting for processing.",
+      "available": true,
+      "thresholds": { "warn": 2000, "critical": 8000 },
+      "updatedAt": "2026-02-06T23:18:12Z"
+    },
+    {
+      "id": "api.rate_limit_exceeded_total",
+      "label": "Rate Limit Exceeded",
+      "category": "api",
+      "value": null,
+      "unit": "count",
+      "severity": "unknown",
+      "source": "missing-upstream-counter",
+      "description": "Add first-class rate-limit counters upstream to enable this signal.",
+      "available": false,
+      "thresholds": { "warn": null, "critical": null },
+      "updatedAt": "2026-02-06T23:18:12Z"
+    }
+  ],
+  "generatedAt": "2026-02-06T23:18:12Z",
+  "cacheTtlMs": 2500
+}
+```
+
+Required semantics:
+
+- `signals[].id` is stable across releases.
+- `signals[].severity` is edge-worker computed using explicit thresholds.
+- `signals[].available=false` means the telemetry gap is known and intentionally surfaced.
+- Endpoint should be served from short-lived cache to avoid excessive upstream polling.
+
+Verifier pressure signals (for queue bottleneck triage):
+
+- `verifier.queue_wait_avg_ms`
+- `verifier.queue_wait_max_ms`
+- `verifier.error_count`
+
 ## State Semantics (Canonical)
 
 Allowed states:
@@ -454,6 +611,7 @@ Compatibility notes:
 - `/v1/aeron/replication-lag` -> `/ops/v1/replication`
 - `/v1/proposals/queue/stats` -> `/ops/v1/queue`
 - `/v1/proposals/queue/stats` -> `/ops/v1/proposals`
+- `/v1/proposals/queue/stats` + `/v1/consensus/status` (+ epoch/priority counters when available) -> `/ops/v1/proposals/epochs`
 - `/health/deep` -> `/ops/v1/health`
 - `/v1/events/recent` -> `/ops/v1/events/recent`
 - `/v1/events/stats` -> `/ops/v1/events/stats`
