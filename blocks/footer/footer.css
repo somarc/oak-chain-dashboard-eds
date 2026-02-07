@@ -7,16 +7,48 @@ footer {
 footer .footer > div {
   margin: auto;
   max-width: 1200px;
-  padding: 40px 24px 24px;
+  padding: 34px 20px 28px;
   color: var(--text-secondary);
+  text-align: center;
+}
+
+footer .footer > div > div {
+  margin: 0 auto;
+  max-width: 760px;
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(19, 29, 54, 0.72), rgba(13, 21, 40, 0.72));
+  padding: 16px 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
 }
 
 footer .footer p {
-  margin: 0;
+  margin: 0.35rem 0;
+  line-height: 1.45;
 }
 
-@media (width >= 900px) {
+footer .footer p:first-child {
+  color: var(--text-color);
+  font-family: var(--heading-font-family);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+footer .footer a {
+  color: var(--brand-secondary);
+}
+
+footer .footer a:hover {
+  color: #d2fbff;
+}
+
+@media (min-width: 900px) {
   footer .footer > div {
-    padding: 40px 32px 24px;
+    padding: 40px 24px 30px;
+  }
+
+  footer .footer > div > div {
+    padding: 18px 22px;
   }
 }
