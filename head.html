@@ -11,6 +11,26 @@
     apiBase: isLocalOps
       ? 'http://127.0.0.1:8787'
       : 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker/oak-chain-action',
+    endpoints: isLocalOps
+      ? undefined
+      : {
+        header: '?route=header',
+        overview: '?route=overview',
+        cluster: '?route=cluster',
+        raft: '?route=raft',
+        replication: '?route=replication',
+        queue: '?route=queue',
+        durability: '?route=durability',
+        health: '?route=health',
+        proposals: '?route=proposals',
+        signals: '?route=signals',
+        proposalsEpochs: '?route=proposals/epochs',
+        eventsRecent: '?route=events/recent',
+        eventsStats: '?route=events/stats',
+        finality: '?route=finality',
+        tarmk: '?route=tarmk',
+        tarChain: '?route=tar-chain',
+      },
     refreshSeconds: {
       header: 30,
       metrics: 30,
