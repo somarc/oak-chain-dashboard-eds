@@ -8,6 +8,17 @@
 <script nonce="aem">
   window.OAK_OPS_RUNTIME_CONFIG = {
     apiBase: 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker/oak-chain-action',
+    refreshSeconds: {
+      header: 30,
+      metrics: 30,
+      feed: 30,
+      proposals: 30,
+      signals: 30,
+      raftCluster: 30,
+      finality: 30,
+      tarmk: 30,
+      tarChain: 30,
+    },
   };
 </script>
 <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
