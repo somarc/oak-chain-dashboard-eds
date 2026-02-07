@@ -55,7 +55,7 @@
   color: #d2fbff;
 }
 
-@media (width >= 1100px) {
+@media (min-width: 1100px) {
   main.has-ops-sidebar-nav {
     display: grid;
     grid-template-columns: 230px minmax(0, 1fr);
