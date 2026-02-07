@@ -10,26 +10,26 @@
   window.OAK_OPS_RUNTIME_CONFIG = {
     apiBase: isLocalOps
       ? 'http://127.0.0.1:8787'
-      : 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker/oak-chain-action',
+      : 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker',
     endpoints: isLocalOps
       ? undefined
       : {
-        header: '?route=header',
-        overview: '?route=overview',
-        cluster: '?route=cluster',
-        raft: '?route=raft',
-        replication: '?route=replication',
-        queue: '?route=queue',
-        durability: '?route=durability',
-        health: '?route=health',
-        proposals: '?route=proposals',
-        signals: '?route=signals',
-        proposalsEpochs: '?route=proposals/epochs',
-        eventsRecent: '?route=events/recent',
-        eventsStats: '?route=events/stats',
-        finality: '?route=finality',
-        tarmk: '?route=tarmk',
-        tarChain: '?route=tar-chain',
+        header: '/oak-chain-action?route=header',
+        overview: '/oak-chain-action?route=overview',
+        cluster: '/oak-chain-action?route=cluster',
+        raft: '/oak-chain-action?route=raft',
+        replication: '/oak-chain-action?route=replication',
+        queue: '/oak-chain-action?route=queue',
+        durability: '/oak-chain-action?route=durability',
+        health: '/oak-chain-action?route=health',
+        proposals: '/oak-chain-action?route=proposals',
+        signals: '/oak-chain-action?route=signals',
+        proposalsEpochs: '/oak-chain-action?route=proposals/epochs',
+        eventsRecent: '/oak-chain-action?route=events/recent',
+        eventsStats: '/oak-chain-action?route=events/stats',
+        finality: '/oak-chain-action?route=finality',
+        tarmk: '/oak-chain-action?route=tarmk',
+        tarChain: '/oak-chain-action?route=tar-chain',
       },
     refreshSeconds: {
       header: 30,
