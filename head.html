@@ -6,8 +6,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <script nonce="aem" src="/scripts/aem.js" type="module"></script>
 <script nonce="aem">
+  const isLocalOps = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   window.OAK_OPS_RUNTIME_CONFIG = {
-    apiBase: 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker/oak-chain-action',
+    apiBase: isLocalOps
+      ? 'http://127.0.0.1:8787'
+      : 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker/oak-chain-action',
     refreshSeconds: {
       header: 30,
       metrics: 30,
