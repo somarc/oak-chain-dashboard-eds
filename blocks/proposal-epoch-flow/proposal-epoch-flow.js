@@ -232,5 +232,9 @@ export default function decorate(block) {
   }
 
   refresh();
-  window.setInterval(refresh, Math.max(1, refreshSeconds) * 1000);
+  const path = (window.location && window.location.pathname) || '/';
+  const isOverviewPage = path === '/' || path === '/index' || path === '/index.html';
+  if (isOverviewPage && refreshSeconds > 0) {
+    window.setInterval(refresh, Math.max(1, refreshSeconds) * 1000);
+  }
 }
