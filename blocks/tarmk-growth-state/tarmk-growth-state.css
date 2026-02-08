@@ -11,6 +11,32 @@
   font-family: var(--mono-font-family);
 }
 
+.tarmk-growth-state .tarmk-growth-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.9rem;
+}
+
+.tarmk-growth-state .tarmk-growth-refresh {
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+  background: rgba(98, 126, 234, 0.2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.35rem 0.8rem;
+}
+
+.tarmk-growth-state .tarmk-growth-auto {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .tarmk-growth-state .tarmk-growth-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

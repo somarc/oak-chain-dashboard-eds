@@ -239,3 +239,14 @@ main .section:first-of-type::after {
   pointer-events: none;
   background: radial-gradient(circle, rgba(98, 126, 234, 0.2), transparent 65%);
 }
+
+#ops-page-refresh-status {
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(132, 152, 207, 0.24);
+  border-radius: 10px;
+  background: rgba(18, 28, 52, 0.55);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-family: var(--mono-font-family);
+}

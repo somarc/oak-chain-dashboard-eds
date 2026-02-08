@@ -1,0 +1,67 @@
+.ops-finality-status .ops-finality-status-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.85rem;
+}
+
+.ops-finality-status .ops-finality-status-refresh {
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+  background: rgba(98, 126, 234, 0.2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.35rem 0.8rem;
+}
+
+.ops-finality-status .ops-finality-status-auto {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ops-finality-status .ops-finality-status-summary {
+  margin: 0 0 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.ops-finality-status .ops-finality-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.8rem;
+}
+
+.ops-finality-status .ops-finality-status-card {
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  background: rgba(22, 33, 62, 0.65);
+  padding: 0.8rem 0.95rem;
+}
+
+.ops-finality-status .ops-finality-status-label {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ops-finality-status .ops-finality-status-value {
+  margin: 0.3rem 0 0.2rem;
+  font-size: 1.35rem;
+  font-family: var(--mono-font-family);
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.ops-finality-status .ops-finality-status-detail {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}

@@ -7,7 +7,10 @@ API-first control plane observability for `oak-segment-consensus`, delivered thr
 | Ops Sidebar Nav |
 | --- |
 | [Cluster Overview](/) |
+| [Finality](/finality) |
 | [TarMK Storage](/tarmk) |
+| [Config & Tuning](/config) |
+| [GC & Compaction](/gc) |
 
 ---
 

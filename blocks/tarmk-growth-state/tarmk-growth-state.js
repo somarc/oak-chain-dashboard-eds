@@ -1,4 +1,5 @@
 import { getOpsRuntimeConfig } from '../../scripts/ops-runtime-config.js';
+import { markOpsPageRefreshed, markOpsPageRefreshError } from '../../scripts/ops-refresh-status.js';
 
 function unwrapEnvelope(payload) {
   if (payload && typeof payload === 'object' && payload.data && typeof payload.data === 'object') {
@@ -42,9 +43,12 @@ export default function decorate(block) {
   const shell = document.createElement('div');
   shell.className = 'tarmk-growth-shell';
 
-  const meta = document.createElement('p');
-  meta.className = 'tarmk-growth-meta';
-  meta.textContent = `Polling ${apiBase} every ${refreshSeconds}s`;
+  const controls = document.createElement('div');
+  controls.className = 'tarmk-growth-controls';
+  controls.innerHTML = `
+    <button type="button" class="tarmk-growth-refresh">Refresh now</button>
+    <label class="tarmk-growth-auto"><input type="checkbox"> Auto-refresh</label>
+  `;
 
   const grid = document.createElement('div');
   grid.className = 'tarmk-growth-grid';
@@ -59,10 +63,14 @@ export default function decorate(block) {
   const foot = document.createElement('p');
   foot.className = 'tarmk-growth-foot';
 
-  shell.append(meta, grid, foot);
+  shell.append(controls, grid, foot);
   block.replaceChildren(shell);
+  const refreshButton = controls.querySelector('.tarmk-growth-refresh');
+  const autoToggle = controls.querySelector('input[type="checkbox"]');
+  let intervalId = null;
 
   async function refresh() {
+    foot.classList.remove('is-error');
     try {
       const response = await fetch(buildUrl(apiBase, endpoint), { headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -81,12 +89,27 @@ export default function decorate(block) {
       packing.caption.textContent = String(data.packingStatus || 'unknown');
 
       foot.textContent = `Latest head: ${data.latestHead || 'unknown'}`;
+      markOpsPageRefreshed('tarmk');
     } catch (error) {
       foot.textContent = `TarMK state unavailable: ${error.message}`;
       foot.classList.add('is-error');
+      markOpsPageRefreshError(error.message);
     }
   }
 
-  refresh();
-  window.setInterval(refresh, Math.max(1, refreshSeconds) * 1000);
+  refresh().catch(() => {});
+  refreshButton.addEventListener('click', () => {
+    refresh().catch(() => {});
+  });
+  autoToggle.addEventListener('change', () => {
+    if (intervalId) {
+      window.clearInterval(intervalId);
+      intervalId = null;
+    }
+    if (autoToggle.checked && refreshSeconds > 0) {
+      intervalId = window.setInterval(() => {
+        refresh().catch(() => {});
+      }, Math.max(1, refreshSeconds) * 1000);
+    }
+  });
 }

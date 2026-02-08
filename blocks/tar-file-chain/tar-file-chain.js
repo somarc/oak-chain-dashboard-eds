@@ -1,4 +1,5 @@
 import { getOpsRuntimeConfig } from '../../scripts/ops-runtime-config.js';
+import { markOpsPageRefreshed, markOpsPageRefreshError } from '../../scripts/ops-refresh-status.js';
 
 function unwrapEnvelope(payload) {
   if (payload && typeof payload === 'object' && payload.data && typeof payload.data === 'object') {
@@ -22,9 +23,12 @@ export default function decorate(block) {
   const shell = document.createElement('div');
   shell.className = 'tar-chain-shell';
 
-  const meta = document.createElement('p');
-  meta.className = 'tar-chain-meta';
-  meta.textContent = `Polling ${apiBase} every ${refreshSeconds}s`;
+  const controls = document.createElement('div');
+  controls.className = 'tar-chain-controls';
+  controls.innerHTML = `
+    <button type="button" class="tar-chain-refresh">Refresh now</button>
+    <label class="tar-chain-auto"><input type="checkbox"> Auto-refresh</label>
+  `;
 
   const desc = document.createElement('p');
   desc.className = 'tar-chain-desc';
@@ -36,10 +40,14 @@ export default function decorate(block) {
   const foot = document.createElement('p');
   foot.className = 'tar-chain-foot';
 
-  shell.append(meta, desc, list, foot);
+  shell.append(controls, desc, list, foot);
   block.replaceChildren(shell);
+  const refreshButton = controls.querySelector('.tar-chain-refresh');
+  const autoToggle = controls.querySelector('input[type="checkbox"]');
+  let intervalId = null;
 
   async function refresh() {
+    foot.classList.remove('is-error');
     try {
       const response = await fetch(buildUrl(apiBase, endpoint), { headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -80,12 +88,27 @@ export default function decorate(block) {
       }
 
       foot.textContent = `TAR generations: ${files.length} • Target TAR size: ${data.maxTarSizeFormatted || '256 MB'}`;
+      markOpsPageRefreshed('tarmk');
     } catch (error) {
       foot.textContent = `TAR chain unavailable: ${error.message}`;
       foot.classList.add('is-error');
+      markOpsPageRefreshError(error.message);
     }
   }
 
-  refresh();
-  window.setInterval(refresh, Math.max(1, refreshSeconds) * 1000);
+  refresh().catch(() => {});
+  refreshButton.addEventListener('click', () => {
+    refresh().catch(() => {});
+  });
+  autoToggle.addEventListener('change', () => {
+    if (intervalId) {
+      window.clearInterval(intervalId);
+      intervalId = null;
+    }
+    if (autoToggle.checked && refreshSeconds > 0) {
+      intervalId = window.setInterval(() => {
+        refresh().catch(() => {});
+      }, Math.max(1, refreshSeconds) * 1000);
+    }
+  });
 }

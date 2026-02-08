@@ -7,7 +7,10 @@ Storage growth, TAR chain continuity, and packing efficiency from the same opera
 | Ops Sidebar Nav |
 | --- |
 | [Cluster Overview](/) |
+| [Finality](/finality) |
 | [TarMK Storage](/tarmk) |
+| [Config & Tuning](/config) |
+| [GC & Compaction](/gc) |
 
 ---
 

@@ -1,5 +1,6 @@
 import { readBlockConfig } from '../../scripts/aem.js';
 import { getOpsRuntimeConfig } from '../../scripts/ops-runtime-config.js';
+import { markOpsPageRefreshed, markOpsPageRefreshError } from '../../scripts/ops-refresh-status.js';
 
 function buildUrl(base, path) {
   if (!path) return null;
@@ -242,9 +243,12 @@ export default function decorate(block) {
   const shell = document.createElement('div');
   shell.className = 'ops-signals-shell';
 
-  const meta = document.createElement('p');
-  meta.className = 'ops-signals-meta';
-  meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
+  const controls = document.createElement('div');
+  controls.className = 'ops-signals-controls';
+  controls.innerHTML = `
+    <button type="button" class="ops-signals-refresh">Refresh now</button>
+    <label class="ops-signals-auto"><input type="checkbox"> Auto-refresh</label>
+  `;
 
   const summary = document.createElement('ul');
   summary.className = 'ops-signals-summary';
@@ -255,12 +259,11 @@ export default function decorate(block) {
   const grid = document.createElement('div');
   grid.className = 'ops-signals-grid';
 
-  const updated = document.createElement('p');
-  updated.className = 'ops-signals-updated';
-  updated.textContent = 'Updated --';
-
-  shell.append(meta, diagnostics, summary, grid, updated);
+  shell.append(controls, diagnostics, summary, grid);
   block.replaceChildren(shell);
+  const refreshButton = controls.querySelector('.ops-signals-refresh');
+  const autoToggle = controls.querySelector('input[type="checkbox"]');
+  let intervalId = null;
   let previousDerivedSample = null;
 
   async function refresh() {
@@ -269,7 +272,7 @@ export default function decorate(block) {
     const proposalsTarget = buildUrl(baseUrl, proposalsEndpoint);
     if (!target) {
       grid.replaceChildren();
-      updated.textContent = 'Signals endpoint missing';
+      markOpsPageRefreshError('Signals endpoint missing');
       return;
     }
 
@@ -303,7 +306,7 @@ export default function decorate(block) {
           renderDiagnostics(diagnostics, derived);
         }
       }
-      updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      markOpsPageRefreshed('signals');
     } catch (error) {
       renderSummary(summary, {});
       diagnostics.replaceChildren();
@@ -312,10 +315,23 @@ export default function decorate(block) {
       err.className = 'ops-signals-card is-error';
       err.textContent = `Ops signals unavailable: ${error.message}`;
       grid.append(err);
-      updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+      markOpsPageRefreshError(error.message);
     }
   }
 
-  refresh();
-  window.setInterval(refresh, Math.max(1, refreshSeconds) * 1000);
+  refresh().catch(() => {});
+  refreshButton.addEventListener('click', () => {
+    refresh().catch(() => {});
+  });
+  autoToggle.addEventListener('change', () => {
+    if (intervalId) {
+      window.clearInterval(intervalId);
+      intervalId = null;
+    }
+    if (autoToggle.checked && refreshSeconds > 0) {
+      intervalId = window.setInterval(() => {
+        refresh().catch(() => {});
+      }, Math.max(1, refreshSeconds) * 1000);
+    }
+  });
 }
