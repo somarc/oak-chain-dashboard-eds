@@ -14,6 +14,7 @@
     endpoints: isLocalOps
       ? undefined
       : {
+        explorerSummary: '/oak-chain-action?route=explorer/summary',
         header: '/oak-chain-action?route=header',
         overview: '/oak-chain-action?route=overview',
         cluster: '/oak-chain-action?route=cluster',
@@ -30,6 +31,15 @@
         finality: '/oak-chain-action?route=finality',
         tarmk: '/oak-chain-action?route=tarmk',
         tarChain: '/oak-chain-action?route=tar-chain',
+        configOsgi: '/oak-chain-action?route=config/osgi',
+        configOsgiSchema: '/oak-chain-action?route=config/osgi/schema',
+        configOsgiSources: '/oak-chain-action?route=config/osgi/sources',
+        configOsgiCoverage: '/oak-chain-action?route=config/osgi/coverage',
+        configOsgiDelta: '/oak-chain-action?route=config/osgi/delta',
+        gcStatus: '/oak-chain-action?route=gc/status',
+        gcEstimate: '/oak-chain-action?route=gc/estimate',
+        compactionProposals: '/oak-chain-action?route=compaction/proposals',
+        fragmentationMetrics: '/oak-chain-action?route=fragmentation/metrics',
       },
     refreshSeconds: {
       header: 30,
@@ -41,6 +51,8 @@
       finality: 30,
       tarmk: 30,
       tarChain: 30,
+      configTuning: 30,
+      gcStatus: 30,
     },
   };
 </script>

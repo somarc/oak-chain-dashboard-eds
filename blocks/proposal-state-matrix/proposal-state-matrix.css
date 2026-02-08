@@ -11,16 +11,76 @@
   line-height: 1;
 }
 
-.proposal-state-matrix .proposal-state-matrix-pressure {
+.proposal-state-matrix .proposal-state-matrix-status {
   margin: 0 0 0.9rem;
-  padding: 0.72rem 0.9rem;
-  border: 1px solid var(--border-primary);
-  border-radius: 10px;
-  background: rgba(14, 19, 38, 0.72);
-  color: var(--brand-tertiary);
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  background: linear-gradient(130deg, rgba(15, 23, 42, 0.88), rgba(17, 24, 39, 0.8));
+  color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
   font-family: var(--mono-font-family);
-  font-size: 0.9rem;
-  line-height: 1.35;
+}
+
+.proposal-state-matrix .proposal-state-matrix-status .status-label {
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.proposal-state-matrix .proposal-state-matrix-status .status-value {
+  font-size: 1.02rem;
+  letter-spacing: 0.04em;
+}
+
+.proposal-state-matrix .proposal-state-matrix-status.is-healthy .status-value {
+  color: #22c55e;
+}
+
+.proposal-state-matrix .proposal-state-matrix-status.is-draining .status-value {
+  color: #60a5fa;
+}
+
+.proposal-state-matrix .proposal-state-matrix-status.is-constrained .status-value {
+  color: #f59e0b;
+}
+
+.proposal-state-matrix .proposal-state-matrix-status.is-degraded .status-value,
+.proposal-state-matrix .proposal-state-matrix-status.is-error .status-value {
+  color: #f97316;
+}
+
+.proposal-state-matrix .proposal-state-matrix-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0 0 0.95rem;
+}
+
+.proposal-state-matrix .proposal-state-matrix-card {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 11px;
+  padding: 0.55rem 0.62rem;
+  background: linear-gradient(170deg, rgba(30, 41, 59, 0.6), rgba(17, 24, 39, 0.85));
+}
+
+.proposal-state-matrix .proposal-state-matrix-card p {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: 0.69rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.proposal-state-matrix .proposal-state-matrix-card strong {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--text-primary);
+  font-size: 1.04rem;
+  font-family: var(--mono-font-family);
 }
 
 .proposal-state-matrix .proposal-state-matrix-table {
@@ -70,4 +130,16 @@
   color: var(--text-tertiary);
   font-size: 0.76rem;
   font-family: var(--mono-font-family);
+}
+
+@media (max-width: 900px) {
+  .proposal-state-matrix .proposal-state-matrix-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .proposal-state-matrix .proposal-state-matrix-cards {
+    grid-template-columns: 1fr;
+  }
 }

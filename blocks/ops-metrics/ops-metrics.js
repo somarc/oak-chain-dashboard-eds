@@ -8,6 +8,26 @@ function buildUrl(base, path) {
   return `${normalizedBase}${normalizedPath}`;
 }
 
+function normalizePayloadForTitle(payload, title = '') {
+  const cardTitle = String(title).toLowerCase();
+  if (!payload || typeof payload !== 'object') return payload;
+  if (cardTitle.includes('cluster') && payload.cluster && typeof payload.cluster === 'object') {
+    return payload.cluster;
+  }
+  if (cardTitle.includes('consensus') && payload.cluster && typeof payload.cluster === 'object') {
+    const cluster = payload.cluster;
+    return {
+      status: cluster.clusterState || payload.status || 'unknown',
+      role: cluster.role,
+      term: cluster.currentTerm,
+      leader: payload.identities && payload.identities.validatorWalletAddress
+        ? { role: cluster.role, term: cluster.currentTerm, wallet: payload.identities.validatorWalletAddress }
+        : undefined,
+    };
+  }
+  return payload;
+}
+
 function readConfig(config, ...keys) {
   for (let i = 0; i < keys.length; i += 1) {
     const key = keys[i];
@@ -234,8 +254,8 @@ function setCardKpis(kpisEl, pills) {
 
 async function updateCard(cardElements, baseUrl, endpoint) {
   const { card, metric, kpis, detail } = cardElements;
-  const target = buildUrl(baseUrl, endpoint);
-  if (!target) {
+  const endpointCandidates = Array.isArray(endpoint) ? endpoint.filter(Boolean) : [endpoint].filter(Boolean);
+  if (!endpointCandidates.length) {
     card.dataset.state = 'error';
     metric.textContent = 'Missing endpoint';
     setCardKpis(kpis, []);
@@ -243,18 +263,25 @@ async function updateCard(cardElements, baseUrl, endpoint) {
     return;
   }
 
+  let lastError = null;
   try {
-    const response = await fetch(target, { headers: { Accept: 'application/json' } });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    for (let i = 0; i < endpointCandidates.length; i += 1) {
+      const target = buildUrl(baseUrl, endpointCandidates[i]);
+      if (!target) continue;
+      const response = await fetch(target, { headers: { Accept: 'application/json' } });
+      if (!response.ok) {
+        lastError = new Error(`HTTP ${response.status}`);
+        continue;
+      }
+      const payload = normalizePayloadForTitle(unwrapEnvelope(await response.json()), cardElements.title);
+      const model = buildCardViewModel(payload, cardElements.title);
+      card.dataset.state = 'ok';
+      metric.textContent = model.headline;
+      setCardKpis(kpis, model.pills);
+      detail.textContent = '';
+      return;
     }
-
-    const payload = unwrapEnvelope(await response.json());
-    const model = buildCardViewModel(payload, cardElements.title);
-    card.dataset.state = 'ok';
-    metric.textContent = model.headline;
-    setCardKpis(kpis, model.pills);
-    detail.textContent = '';
+    throw lastError || new Error('No endpoint candidates succeeded');
   } catch (error) {
     card.dataset.state = 'error';
     metric.textContent = 'Unavailable';
@@ -270,8 +297,8 @@ export default function decorate(block) {
   const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.metrics);
 
   const endpointPairs = [
-    ['Consensus Status', readConfig(config, 'consensus-status', 'consensusStatus') || runtime.endpoints.overview],
-    ['Cluster State', readConfig(config, 'cluster-state', 'clusterState') || runtime.endpoints.cluster],
+    ['Consensus Status', readConfig(config, 'consensus-status', 'consensusStatus') || [runtime.endpoints.explorerSummary, runtime.endpoints.overview]],
+    ['Cluster State', readConfig(config, 'cluster-state', 'clusterState') || [runtime.endpoints.explorerSummary, runtime.endpoints.cluster]],
     ['Raft Metrics', readConfig(config, 'raft-metrics', 'raftMetrics') || runtime.endpoints.raft],
     ['Replication Lag', readConfig(config, 'replication-lag', 'replicationLag') || runtime.endpoints.replication],
     ['Queue Stats', readConfig(config, 'queue-stats', 'queueStats') || runtime.endpoints.queue],

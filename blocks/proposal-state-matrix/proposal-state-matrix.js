@@ -30,6 +30,21 @@ function formatMaybe(value) {
   return String(value);
 }
 
+function formatCount(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
+  return Number(value).toLocaleString();
+}
+
+function formatPct(value) {
+  if (!Number.isFinite(value)) return '--';
+  return `${value.toFixed(1)}%`;
+}
+
+function asNum(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function cell(text, className = '') {
   const td = document.createElement('td');
   if (className) td.className = className;
@@ -58,23 +73,65 @@ function renderMatrix(tableBody, payload) {
   }));
 }
 
-function renderPressure(pressureEl, payload) {
+function deriveModel(payload) {
   const queuePressure = payload.queuePressure || {};
   const types = payload.types || {};
   const statesLifetime = payload.statesLifetime || {};
   const routing = payload.routing || {};
-  const parts = [
-    `queue ${formatMaybe(queuePressure.queuePending ?? queuePressure.pending)}`,
-    `mempool ${formatMaybe(queuePressure.mempool)}`,
-    `backpressure ${formatMaybe(queuePressure.backpressurePending)}/${formatMaybe(queuePressure.backpressureMax)}`,
-    `active ${queuePressure.backpressureActive ? 'yes' : 'no'}`,
-    `write ${formatMaybe(types.write)}`,
-    `delete ${formatMaybe(types.delete)}`,
-    `total ${formatMaybe(types.total)}`,
-    `finalized(life) ${formatMaybe(statesLifetime.finalized)}`,
-    `sent(life) ${formatMaybe(routing.sentLifetime)}`,
-  ];
-  pressureEl.textContent = parts.join(' • ');
+
+  const queuePending = asNum(queuePressure.queuePending ?? queuePressure.pending, 0);
+  const mempool = asNum(queuePressure.mempool, 0);
+  const bpPending = asNum(queuePressure.backpressurePending, 0);
+  const bpMax = asNum(queuePressure.backpressureMax, 0);
+  const bpActive = Boolean(queuePressure.backpressureActive);
+
+  const verified = asNum(payload.states?.verified, 0);
+  const finalized = asNum(payload.states?.finalized, 0);
+  const rejected = asNum(payload.states?.rejected, 0);
+  const gap = Math.max(0, verified - finalized);
+  const coverage = verified > 0 ? (finalized / verified) * 100 : 100;
+
+  const sentCurrent = asNum(routing.sentCurrent, 0);
+  const routingDebt = Math.max(0, sentCurrent - finalized);
+  const writeCount = asNum(types.write, 0);
+  const deleteCount = asNum(types.delete, 0);
+
+  let status = 'IDLE';
+  let statusClass = 'idle';
+  if (payload.degraded) {
+    status = 'DEGRADED';
+    statusClass = 'degraded';
+  } else if (bpActive && bpPending > 0) {
+    status = 'BACKPRESSURE';
+    statusClass = 'constrained';
+  } else if (queuePending > 0 || gap > 0 || routingDebt > 0) {
+    status = 'DRAINING';
+    statusClass = 'draining';
+  } else if (rejected > 0) {
+    status = 'REJECTS';
+    statusClass = 'constrained';
+  } else {
+    status = 'STEADY';
+    statusClass = 'healthy';
+  }
+
+  return {
+    status,
+    statusClass,
+    queuePending,
+    mempool,
+    bpPending,
+    bpMax,
+    bpActive,
+    gap,
+    coverage,
+    routingDebt,
+    sentCurrent,
+    writeCount,
+    deleteCount,
+    finalizedLifetime: asNum(statesLifetime.finalized, 0),
+    rejected,
+  };
 }
 
 function renderAvailability(noteEl, payload) {
@@ -103,8 +160,28 @@ export default function decorate(block) {
   meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
 
   const pressure = document.createElement('p');
-  pressure.className = 'proposal-state-matrix-pressure';
-  pressure.textContent = 'Loading proposal pressure...';
+  pressure.className = 'proposal-state-matrix-status';
+  pressure.innerHTML = '<span class="status-label">State</span><strong class="status-value">Loading…</strong>';
+
+  const cards = document.createElement('div');
+  cards.className = 'proposal-state-matrix-cards';
+
+  const cardDefs = [
+    ['Queue Pending', 'queuePending'],
+    ['In-flight Gap', 'gap'],
+    ['Backpressure', 'backpressure'],
+    ['Routing Debt', 'routingDebt'],
+    ['Finalize Coverage', 'coverage'],
+    ['Finalized Lifetime', 'finalizedLifetime'],
+  ];
+  const cardEls = {};
+  cardDefs.forEach(([label, key]) => {
+    const el = document.createElement('article');
+    el.className = 'proposal-state-matrix-card';
+    el.innerHTML = `<p>${label}</p><strong>--</strong>`;
+    cards.append(el);
+    cardEls[key] = el.querySelector('strong');
+  });
 
   const table = document.createElement('table');
   table.className = 'proposal-state-matrix-table';
@@ -130,7 +207,7 @@ export default function decorate(block) {
   updated.className = 'proposal-state-matrix-updated';
   updated.textContent = 'Updated --';
 
-  shell.append(meta, pressure, table, note, updated);
+  shell.append(meta, pressure, cards, table, note, updated);
   block.replaceChildren(shell);
 
   async function refresh() {
@@ -147,15 +224,28 @@ export default function decorate(block) {
         throw new Error(`HTTP ${response.status}`);
       }
       const payload = unwrapEnvelope(await response.json());
-      renderPressure(pressure, payload);
+      const model = deriveModel(payload);
+      pressure.className = `proposal-state-matrix-status is-${model.statusClass}`;
+      pressure.innerHTML = `<span class="status-label">State</span><strong class="status-value">${model.status}</strong>`;
+
+      cardEls.queuePending.textContent = formatCount(model.queuePending);
+      cardEls.gap.textContent = formatCount(model.gap);
+      cardEls.backpressure.textContent = `${formatCount(model.bpPending)} / ${formatCount(model.bpMax)}`;
+      cardEls.routingDebt.textContent = formatCount(model.routingDebt);
+      cardEls.coverage.textContent = formatPct(model.coverage);
+      cardEls.finalizedLifetime.textContent = formatCount(model.finalizedLifetime);
+
       renderMatrix(body, payload);
       renderAvailability(note, payload);
+      note.textContent = `${note.textContent} Mempool=${formatCount(model.mempool)} • Backpressure active=${model.bpActive ? 'yes' : 'no'} • Writes=${formatCount(model.writeCount)} • Deletes=${formatCount(model.deleteCount)} • Rejected=${formatCount(model.rejected)} • Sent(current)=${formatCount(model.sentCurrent)}.`;
       meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
       updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     } catch (error) {
-      pressure.textContent = `Proposal state unavailable: ${error.message}`;
+      pressure.className = 'proposal-state-matrix-status is-error';
+      pressure.innerHTML = `<span class="status-label">State</span><strong class="status-value">UNAVAILABLE</strong>`;
+      Object.values(cardEls).forEach((el) => { el.textContent = '--'; });
       renderMatrix(body, { states: {}, stateByType: { write: {}, delete: {} } });
-      note.textContent = 'Awaiting proposal state payload.';
+      note.textContent = `Proposal state unavailable: ${error.message}`;
     }
   }
 
