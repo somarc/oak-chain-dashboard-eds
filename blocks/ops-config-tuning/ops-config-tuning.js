@@ -143,8 +143,8 @@ export default async function decorate(block) {
   const controls = document.createElement('div');
   controls.className = 'ops-config-tuning-controls';
   controls.innerHTML = `
-    <button type="button" class="ops-config-tuning-refresh">Refresh now</button>
-    <label class="ops-config-tuning-auto"><input type="checkbox"> Auto-refresh</label>
+    <button type="button" class="ops-config-tuning-refresh ops-refresh-button">Refresh now</button>
+    <label class="ops-config-tuning-auto ops-refresh-toggle"><input type="checkbox" class="ops-refresh-checkbox"> Auto-refresh</label>
   `;
   block.replaceChildren(shell);
   block.prepend(controls);
@@ -184,6 +184,12 @@ export default async function decorate(block) {
     markOpsPageRefreshed('config');
   };
 
+  const setRefreshing = (isRefreshing) => {
+    refreshButton.disabled = isRefreshing;
+    refreshButton.classList.toggle('is-loading', isRefreshing);
+    refreshButton.textContent = isRefreshing ? 'Refreshing...' : 'Refresh now';
+  };
+
   try {
     await load();
   } catch (e) {
@@ -193,9 +199,12 @@ export default async function decorate(block) {
   }
 
   refreshButton.addEventListener('click', () => {
-    load().catch((error) => {
-      markOpsPageRefreshError(error?.message || String(error));
-    });
+    setRefreshing(true);
+    load()
+      .catch((error) => {
+        markOpsPageRefreshError(error?.message || String(error));
+      })
+      .finally(() => setRefreshing(false));
   });
 
   autoToggle.addEventListener('change', () => {

@@ -56,13 +56,9 @@ export default function decorate(block) {
   const controls = document.createElement('div');
   controls.className = 'ops-gc-status-controls';
   controls.innerHTML = `
-    <button type="button" class="ops-gc-status-refresh">Refresh now</button>
-    <label class="ops-gc-status-auto"><input type="checkbox"> Auto-refresh</label>
+    <button type="button" class="ops-gc-status-refresh ops-refresh-button">Refresh now</button>
+    <label class="ops-gc-status-auto ops-refresh-toggle"><input type="checkbox" class="ops-refresh-checkbox"> Auto-refresh</label>
   `;
-
-  const meta = document.createElement('p');
-  meta.className = 'ops-gc-status-meta';
-  meta.textContent = `Polling ${apiBase} every ${refreshSeconds}s`;
 
   const grid = document.createElement('div');
   grid.className = 'ops-gc-status-grid';
@@ -74,7 +70,7 @@ export default function decorate(block) {
   };
   grid.append(cards.status, cards.estimate, cards.compaction, cards.fragmentation);
 
-  shell.append(meta, grid);
+  shell.append(grid);
   block.replaceChildren(shell);
   block.prepend(controls);
   const refreshButton = controls.querySelector('.ops-gc-status-refresh');
@@ -144,9 +140,16 @@ export default function decorate(block) {
     }
   };
 
+  const setRefreshing = (isRefreshing) => {
+    refreshButton.disabled = isRefreshing;
+    refreshButton.classList.toggle('is-loading', isRefreshing);
+    refreshButton.textContent = isRefreshing ? 'Refreshing...' : 'Refresh now';
+  };
+
   refresh().catch(() => {});
   refreshButton.addEventListener('click', () => {
-    refresh().catch(() => {});
+    setRefreshing(true);
+    refresh().catch(() => {}).finally(() => setRefreshing(false));
   });
   autoToggle.addEventListener('change', () => {
     if (intervalId) {

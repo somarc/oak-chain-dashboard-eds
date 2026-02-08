@@ -333,5 +333,9 @@ export default function decorate(block) {
       updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     });
   tick();
-  window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
+  const path = (window.location && window.location.pathname) || '/';
+  const isOverviewPage = path === '/' || path === '/index' || path === '/index.html';
+  if (isOverviewPage && refreshSeconds > 0) {
+    window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
+  }
 }

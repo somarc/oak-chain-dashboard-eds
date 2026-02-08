@@ -250,3 +250,81 @@ main .section:first-of-type::after {
   font-size: 0.78rem;
   font-family: var(--mono-font-family);
 }
+
+.ops-refresh-button {
+  border: 1px solid rgba(98, 126, 234, 0.5) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, rgba(98, 126, 234, 0.24), rgba(34, 211, 238, 0.22)) !important;
+  color: var(--text-primary) !important;
+  font: inherit !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em;
+  padding: 0.38rem 0.9rem !important;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 160ms ease, border-color 160ms ease, filter 160ms ease;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.ops-refresh-button:hover {
+  border-color: rgba(34, 211, 238, 0.68) !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+  filter: brightness(1.08);
+}
+
+.ops-refresh-button:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.ops-refresh-button.is-loading {
+  border-color: rgba(245, 179, 1, 0.65) !important;
+  background: linear-gradient(90deg, rgba(245, 179, 1, 0.22), rgba(98, 126, 234, 0.18)) !important;
+  cursor: progress;
+}
+
+.ops-refresh-button:disabled {
+  opacity: 0.9;
+  cursor: not-allowed;
+}
+
+.ops-refresh-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.8rem !important;
+  user-select: none;
+}
+
+.ops-refresh-checkbox {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border: 1px solid rgba(132, 152, 207, 0.45);
+  border-radius: 999px;
+  background: rgba(22, 33, 62, 0.65);
+  position: relative;
+  transition: background 150ms ease, border-color 150ms ease;
+  cursor: pointer;
+}
+
+.ops-refresh-checkbox::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  transition: transform 150ms ease;
+}
+
+.ops-refresh-checkbox:checked {
+  background: rgba(34, 211, 238, 0.28);
+  border-color: rgba(34, 211, 238, 0.72);
+}
+
+.ops-refresh-checkbox:checked::after {
+  transform: translateX(16px);
+}

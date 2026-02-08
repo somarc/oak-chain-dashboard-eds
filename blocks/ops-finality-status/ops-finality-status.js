@@ -64,8 +64,8 @@ export default function decorate(block) {
   const controls = document.createElement('div');
   controls.className = 'ops-finality-status-controls';
   controls.innerHTML = `
-    <button type="button" class="ops-finality-status-refresh">Refresh now</button>
-    <label class="ops-finality-status-auto"><input type="checkbox"> Auto-refresh</label>
+    <button type="button" class="ops-finality-status-refresh ops-refresh-button">Refresh now</button>
+    <label class="ops-finality-status-auto ops-refresh-toggle"><input type="checkbox" class="ops-refresh-checkbox"> Auto-refresh</label>
   `;
 
   const summary = document.createElement('p');
@@ -147,16 +147,23 @@ export default function decorate(block) {
     markOpsPageRefreshed('finality');
   };
 
-  const handleRefresh = () => {
-    refresh().catch((error) => {
+  const handleRefresh = () => refresh().catch((error) => {
       summary.textContent = `Finality unavailable: ${error.message}`;
       markOpsPageRefreshError(error.message);
     });
+
+  const setRefreshing = (isRefreshing) => {
+    refreshButton.disabled = isRefreshing;
+    refreshButton.classList.toggle('is-loading', isRefreshing);
+    refreshButton.textContent = isRefreshing ? 'Refreshing...' : 'Refresh now';
   };
 
   handleRefresh();
 
-  refreshButton.addEventListener('click', handleRefresh);
+  refreshButton.addEventListener('click', () => {
+    setRefreshing(true);
+    Promise.resolve(handleRefresh()).finally(() => setRefreshing(false));
+  });
   autoToggle.addEventListener('change', () => {
     if (intervalId) {
       window.clearInterval(intervalId);

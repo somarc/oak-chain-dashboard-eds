@@ -246,8 +246,8 @@ export default function decorate(block) {
   const controls = document.createElement('div');
   controls.className = 'ops-signals-controls';
   controls.innerHTML = `
-    <button type="button" class="ops-signals-refresh">Refresh now</button>
-    <label class="ops-signals-auto"><input type="checkbox"> Auto-refresh</label>
+    <button type="button" class="ops-signals-refresh ops-refresh-button">Refresh now</button>
+    <label class="ops-signals-auto ops-refresh-toggle"><input type="checkbox" class="ops-refresh-checkbox"> Auto-refresh</label>
   `;
 
   const summary = document.createElement('ul');
@@ -319,9 +319,16 @@ export default function decorate(block) {
     }
   }
 
+  function setRefreshing(isRefreshing) {
+    refreshButton.disabled = isRefreshing;
+    refreshButton.classList.toggle('is-loading', isRefreshing);
+    refreshButton.textContent = isRefreshing ? 'Refreshing...' : 'Refresh now';
+  }
+
   refresh().catch(() => {});
   refreshButton.addEventListener('click', () => {
-    refresh().catch(() => {});
+    setRefreshing(true);
+    refresh().catch(() => {}).finally(() => setRefreshing(false));
   });
   autoToggle.addEventListener('change', () => {
     if (intervalId) {

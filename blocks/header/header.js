@@ -316,6 +316,8 @@ export default async function decorate(block) {
     const refs = { brand: brandRefs, chips: chipRefs };
     const tick = () => refreshHeader({ baseUrl: runtime.apiBase, endpoint: headerEndpoint, refs });
     tick();
-    window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
+    if (refreshSeconds > 0) {
+      window.setInterval(tick, Math.max(1, refreshSeconds) * 1000);
+    }
   }
 }
