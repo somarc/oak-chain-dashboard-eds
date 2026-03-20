@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Catalogue of Blockchain AEM tools. Adaptive operations live here; legacy authored pages remain compatibility views."
+      content="Catalogue of Blockchain AEM tools. Oak Ops is the canonical operator surface and new operational UI work lives under /tools."
     />
     <base href="/tools/" />
     <link rel="stylesheet" href="/tools/index.css" />
@@ -16,7 +16,7 @@
         <p class="eyebrow">Blockchain AEM</p>
         <h1>Tool Catalogue</h1>
         <p class="subtitle">
-          Global P2P Oak Repository. The dashboard is moving from authored status pages to a proper tools surface. Start with Oak Ops and treat the old pages as compatibility views.
+          Global P2P Oak Repository. Oak Ops is now the canonical operator surface, and the old authored status pages have been retired.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="/tools/ops/ops.html">Open Oak Ops</a>
@@ -54,51 +54,6 @@
         <section class="catalog-section">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Compatibility</p>
-              <h2>Legacy Pages</h2>
-            </div>
-            <p class="section-note">These remain useful during migration, but they are no longer the architectural center.</p>
-          </div>
-          <div class="tool-grid">
-            <article class="tool-card">
-              <p class="tool-kicker">Read model</p>
-              <h3>Queue</h3>
-              <p>Raw engineering view over queue counters and verifier/backpressure internals.</p>
-              <div class="tool-actions">
-                <a class="btn btn-secondary" href="/queue">Open</a>
-              </div>
-            </article>
-            <article class="tool-card">
-              <p class="tool-kicker">Overlay</p>
-              <h3>Finality</h3>
-              <p>Compatibility view combining adaptive release posture with Ethereum finality overlay data.</p>
-              <div class="tool-actions">
-                <a class="btn btn-secondary" href="/finality">Open</a>
-              </div>
-            </article>
-            <article class="tool-card">
-              <p class="tool-kicker">Runtime</p>
-              <h3>Config</h3>
-              <p>OSGi drift, risk buckets, and blockchain/runtime tuning surfaces.</p>
-              <div class="tool-actions">
-                <a class="btn btn-secondary" href="/config">Open</a>
-              </div>
-            </article>
-            <article class="tool-card">
-              <p class="tool-kicker">Storage</p>
-              <h3>GC and TarMK</h3>
-              <p>GC readiness, compaction posture, TarMK growth, and fragmentation views.</p>
-              <div class="tool-actions">
-                <a class="btn btn-secondary" href="/gc">GC</a>
-                <a class="btn btn-secondary" href="/tarmk">TarMK</a>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="catalog-section">
-          <div class="section-heading">
-            <div>
               <p class="eyebrow">Contracts</p>
               <h2>Reference Surfaces</h2>
             </div>
@@ -116,6 +71,14 @@
               <p class="tool-kicker">Backend</p>
               <h3>Adaptive Scheduler</h3>
               <p>Backend release-flow and control-plane live in `oak-segment-consensus`; contracts should stay aligned there first.</p>
+            </article>
+            <article class="tool-card">
+              <p class="tool-kicker">Platform</p>
+              <h3>EDS Integrations</h3>
+              <p>Reference documentation for the Edge Delivery and DA patterns behind this tools-first operator surface.</p>
+              <div class="tool-actions">
+                <a class="btn btn-secondary" href="https://www.aem.live/docs/integrations">Open</a>
+              </div>
             </article>
           </div>
         </section>
