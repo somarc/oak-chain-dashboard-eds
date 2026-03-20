@@ -115,7 +115,7 @@ function renderSummary(summary, statsPayload, events) {
 }
 
 async function refresh({
-  list, meta, summary, updated, baseUrl, recentEventsUrl, eventStatsUrl,
+  list, summary, recentEventsUrl, eventStatsUrl,
 }) {
   try {
     const [recentResponse, statsResponse] = await Promise.all([
@@ -143,9 +143,6 @@ async function refresh({
       list.replaceChildren(...events.map(renderEvent));
     }
 
-    const count = statsPayload.totalEvents || statsPayload.total || events.length;
-    meta.textContent = `${count} total events observed from ${baseUrl}`;
-    updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     renderSummary(summary, statsPayload, events);
   } catch (error) {
     list.replaceChildren();
@@ -159,7 +156,6 @@ async function refresh({
     if (stats) stats.innerHTML = '';
     if (severity) severity.replaceChildren();
     if (types) types.replaceChildren();
-    meta.textContent = 'Awaiting event stream';
   }
 }
 
@@ -167,7 +163,8 @@ export default function decorate(block) {
   const runtime = getOpsRuntimeConfig();
   const config = readBlockConfig(block);
   const baseUrl = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.feed);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.feed ?? 0;
+  const refreshSeconds = Number(refreshSetting);
 
   const recentEventsUrl = buildUrl(
     baseUrl,
@@ -181,10 +178,6 @@ export default function decorate(block) {
   const shell = document.createElement('div');
   shell.className = 'ops-feed-shell';
 
-  const meta = document.createElement('p');
-  meta.className = 'ops-feed-meta';
-  meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
-
   const summary = document.createElement('div');
   summary.className = 'ops-feed-summary';
   summary.innerHTML = `
@@ -196,15 +189,11 @@ export default function decorate(block) {
   const list = document.createElement('ul');
   list.className = 'ops-feed-list';
 
-  const updated = document.createElement('p');
-  updated.className = 'ops-feed-updated';
-  updated.textContent = 'Updated --';
-
-  shell.append(meta, summary, list, updated);
+  shell.append(summary, list);
   block.replaceChildren(shell);
 
   const tick = () => refresh({
-    list, meta, summary, updated, baseUrl, recentEventsUrl, eventStatsUrl,
+    list, summary, recentEventsUrl, eventStatsUrl,
   });
   tick();
   const path = (window.location && window.location.pathname) || '/';

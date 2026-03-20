@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Oak Chain Tools</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Catalogue of Oak Chain EDS tools. Adaptive operations live here; legacy authored pages remain compatibility views."
+    />
+    <base href="/tools/" />
+    <link rel="stylesheet" href="/tools/index.css" />
+  </head>
+  <body>
+    <div class="catalog-shell">
+      <header class="catalog-hero">
+        <p class="eyebrow">Oak Chain EDS</p>
+        <h1>Tool Catalogue</h1>
+        <p class="subtitle">
+          The dashboard is moving from authored status pages to a proper tools surface. Start with Oak Ops and treat the old pages as compatibility views.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="/tools/ops/ops.html">Open Oak Ops</a>
+          <a class="btn btn-secondary" href="/">Repository Home</a>
+        </div>
+      </header>
+
+      <main class="catalog-main">
+        <section class="catalog-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Primary</p>
+              <h2>Operator Apps</h2>
+            </div>
+          </div>
+          <div class="tool-grid">
+            <article class="tool-card is-primary">
+              <p class="tool-kicker">Adaptive control plane</p>
+              <h3>Oak Ops</h3>
+              <p>
+                Canonical operator app for release flow, governor state, signals, config drift, GC posture, and raw debug surfaces.
+              </p>
+              <ul>
+                <li>Canonical `release-flow` model</li>
+                <li>Signal-first health view</li>
+                <li>Debug access to raw queue stats</li>
+              </ul>
+              <div class="tool-actions">
+                <a class="btn btn-primary" href="/tools/ops/ops.html">Launch</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="catalog-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Compatibility</p>
+              <h2>Legacy Pages</h2>
+            </div>
+            <p class="section-note">These remain useful during migration, but they are no longer the architectural center.</p>
+          </div>
+          <div class="tool-grid">
+            <article class="tool-card">
+              <p class="tool-kicker">Read model</p>
+              <h3>Queue</h3>
+              <p>Raw engineering view over queue counters and verifier/backpressure internals.</p>
+              <div class="tool-actions">
+                <a class="btn btn-secondary" href="/queue">Open</a>
+              </div>
+            </article>
+            <article class="tool-card">
+              <p class="tool-kicker">Overlay</p>
+              <h3>Finality</h3>
+              <p>Compatibility view combining adaptive release posture with Ethereum finality overlay data.</p>
+              <div class="tool-actions">
+                <a class="btn btn-secondary" href="/finality">Open</a>
+              </div>
+            </article>
+            <article class="tool-card">
+              <p class="tool-kicker">Runtime</p>
+              <h3>Config</h3>
+              <p>OSGi drift, risk buckets, and blockchain/runtime tuning surfaces.</p>
+              <div class="tool-actions">
+                <a class="btn btn-secondary" href="/config">Open</a>
+              </div>
+            </article>
+            <article class="tool-card">
+              <p class="tool-kicker">Storage</p>
+              <h3>GC and TarMK</h3>
+              <p>GC readiness, compaction posture, TarMK growth, and fragmentation views.</p>
+              <div class="tool-actions">
+                <a class="btn btn-secondary" href="/gc">GC</a>
+                <a class="btn btn-secondary" href="/tarmk">TarMK</a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="catalog-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Contracts</p>
+              <h2>Reference Surfaces</h2>
+            </div>
+          </div>
+          <div class="tool-grid">
+            <article class="tool-card">
+              <p class="tool-kicker">API</p>
+              <h3>Ops Contract</h3>
+              <p>Operator contract for the edge adapter and the app surfaces it feeds.</p>
+              <div class="tool-actions">
+                <a class="btn btn-secondary" href="/docs/ops-api-contract-v1.md">Open</a>
+              </div>
+            </article>
+            <article class="tool-card">
+              <p class="tool-kicker">Backend</p>
+              <h3>Adaptive Scheduler</h3>
+              <p>Backend release-flow and control-plane live in `oak-segment-consensus`; contracts should stay aligned there first.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

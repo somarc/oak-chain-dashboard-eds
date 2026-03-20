@@ -1,7 +1,7 @@
 # Ops API Contract v1 (EDS Dashboard)
 
 Status: Draft (day-one baseline)
-Last Updated: 2026-02-06
+Last Updated: 2026-03-20
 Owner: Oak Chain Dashboard + Oak Segment Consensus
 
 ## Purpose
@@ -36,6 +36,8 @@ This contract is the UI read model and is intentionally separate from raw intern
 - Unknown fields must be ignored by clients.
 - New optional fields are non-breaking.
 - Removing fields or changing field types requires `/ops/v2`.
+- Canonical operator lifecycle views use `/release-flow` endpoints.
+- `/epochs` endpoints are compatibility overlays only and are deprecated for new operator workflows.
 
 ## Standard Response Envelope
 
@@ -366,68 +368,81 @@ Purpose: sequential TAR generation chain visualization payload.
 }
 ```
 
-### 15) `GET /ops/v1/proposals`
+### 15) `GET /ops/v1/proposals/release-flow`
 
-Purpose: proposal queue pressure + state lifecycle counts + type breakdown for matrix view.
+Purpose: canonical proposal release-flow pressure + state lifecycle counts + type breakdown for matrix view.
 
 `data` shape:
 
 ```json
 {
-  "queuePressure": {
-    "pending": 2488,
-    "mempool": 217,
-    "backpressurePending": 92,
-    "backpressureMax": 10000,
+  "contractVersion": "proposal.release-flow.v1",
+  "source": "worker-fallback-aggregate-counters",
+  "schedulerModel": "adaptive-capacity",
+  "releaseMode": "adaptive-active",
+  "requiredConfirmations": 1,
+  "priorityDirectReleaseEnabled": false,
+  "currentEpoch": 1057,
+  "finalizedEpoch": 1055,
+  "epochsUntilFinality": 2,
+  "releaseStages": {
+    "unverifiedMempoolCount": 2488,
+    "verifiedPackingBufferCount": 0,
+    "releaseReadyProposalCount": 0,
+    "releaseReadyBatchCount": 0,
+    "backpressureOverflowProposalCount": 0,
+    "backpressureOverflowBatchCount": 0,
+    "verifiedResidentProposalCount": 0
+  },
+  "governor": {
+    "state": "UNKNOWN",
+    "action": "UNKNOWN",
+    "reasonCodes": [],
     "backpressureActive": false,
-    "backpressureSent": 9402,
-    "backpressureAcked": 9310
+    "backpressurePendingCount": 0,
+    "backpressureMaxPending": 0,
+    "pendingOldestMs": 0,
+    "pendingStalledMs": 0
   },
-  "states": {
-    "unverified": 2488,
-    "verified": 9698,
-    "finalized": 9440,
-    "rejected": 24
+  "packing": {
+    "walletCount": 0,
+    "queuedProposalCountTotal": 0,
+    "drainedProposalCountTotal": 0,
+    "createdBatchCountTotal": 0
   },
-  "types": {
-    "write": 12186,
-    "delete": 88,
-    "total": 12274
+  "overflow": {
+    "separateBufferEnabled": true,
+    "bufferedBatchCountTotal": 0,
+    "bufferedProposalCountTotal": 0,
+    "promotedBatchCountTotal": 0,
+    "promotedProposalCountTotal": 0
   },
-  "stateByType": {
-    "write": {
-      "unverified": null,
-      "verified": null,
-      "finalized": null,
-      "rejected": null
-    },
-    "delete": {
-      "unverified": null,
-      "verified": null,
-      "finalized": null,
-      "rejected": null
-    },
-    "availability": "needs_upstream_counters"
+  "throughput": {
+    "priorityProposalsSent": 0,
+    "batchedProposalsSent": 0,
+    "totalProposalsSent": 0,
+    "totalFinalizedCount": 0,
+    "totalRejectedCount": 0
   },
-  "epochs": {
-    "currentEpoch": 1057,
-    "finalizedEpoch": 1055,
-    "epochsUntilFinality": 2,
+  "epochCompatibility": {
+    "source": "compatibility-epoch-overlay",
     "pendingEpochs": 3,
-    "totalQueued": 12186
-  }
+    "pendingEpochStats": null,
+    "replacementEndpoint": "/ops/v1/proposals/release-flow"
+  },
+  "note": "Adaptive verified-release view derived from queue stats fallback."
 }
 ```
 
-### 16) `GET /ops/v1/proposals/epochs`
+Compatibility note: legacy epoch counters remain available only as an overlay for older consumers. New operator workflows should use this endpoint directly.
 
-Purpose: authoritative epoch residency and priority-lane flow for proposal lifecycle.
+### 16) `GET /ops/v1/proposals/epochs` (compatibility/deprecated)
 
-This endpoint is the primary control-plane view for understanding:
+Purpose: compatibility/deprecated epoch residency overlay for proposal lifecycle.
 
-- How much load is currently on the Aeron fast path (`priority`)
-- How much is buffered in epoch windows (`express`, `standard`)
-- Whether epoch staging is reducing TarMK DAG fanout by packing writes before finality
+This endpoint is retained only for older consumers that still need epoch residency details. New operator workflows should prefer `/ops/v1/proposals/release-flow`.
+
+This overlay is useful only for transition-era operators who still want epoch-position context alongside the adaptive scheduler. It should not be treated as scheduler truth.
 
 `data` shape:
 
@@ -437,68 +452,39 @@ This endpoint is the primary control-plane view for understanding:
   "finalizedEpoch": 1055,
   "pendingEpochs": 3,
   "epochsUntilFinality": 2,
-  "source": "upstream-epoch-counters",
-  "note": "All counters are epoch-resident and priority-aware.",
+  "source": "aggregate-counters",
+  "note": "Epoch blocks are derived from aggregate counters until first-class epoch overlays are retired.",
   "blocks": [
     {
-      "label": "Finalized",
       "epoch": 1055,
       "status": "finalized",
-      "byPriority": {
-        "standard": { "unverified": 0, "verified": 0, "finalized": 6040, "rejected": 4 },
-        "express": { "unverified": 0, "verified": 0, "finalized": 3020, "rejected": 2 },
-        "priority": { "unverified": 0, "verified": 0, "finalized": 380, "rejected": 0 }
-      },
-      "totals": { "unverified": 0, "verified": 0, "finalized": 9440, "rejected": 6 },
+      "label": "Finalized",
+      "counts": { "unverified": 0, "verified": 0, "finalized": 9440, "rejected": 24 },
       "flowToNext": 258
     },
     {
-      "label": "Next to be Finalized",
       "epoch": 1056,
       "status": "next",
-      "byPriority": {
-        "standard": { "unverified": 0, "verified": 150, "finalized": 0, "rejected": 0 },
-        "express": { "unverified": 0, "verified": 80, "finalized": 0, "rejected": 0 },
-        "priority": { "unverified": 0, "verified": 28, "finalized": 0, "rejected": 0 }
-      },
-      "totals": { "unverified": 0, "verified": 258, "finalized": 0, "rejected": 0 },
-      "flowToNext": 2488
+      "label": "Next to be Finalized",
+      "counts": { "unverified": 0, "verified": 258, "finalized": 0, "rejected": 0 },
+      "flowToNext": 148
     },
     {
-      "label": "Current",
       "epoch": 1057,
       "status": "current",
-      "byPriority": {
-        "standard": { "unverified": 1900, "verified": 0, "finalized": 0, "rejected": 0 },
-        "express": { "unverified": 420, "verified": 0, "finalized": 0, "rejected": 0 },
-        "priority": { "unverified": 168, "verified": 0, "finalized": 0, "rejected": 0 }
-      },
-      "totals": { "unverified": 2488, "verified": 0, "finalized": 0, "rejected": 0 },
+      "label": "Current",
+      "counts": { "unverified": 148, "verified": 0, "finalized": 0, "rejected": 0 },
       "flowToNext": 0
     }
-  ],
-  "aeronLoad": {
-    "priorityIngressRatePerSec": 132,
-    "priorityPendingAcks": 14,
-    "priorityAckLatencyP95Ms": 18,
-    "priorityBackpressurePending": 9
-  },
-  "packing": {
-    "writesBufferedCurrentEpoch": 2320,
-    "writesReleasedAtFinality": 9440,
-    "estimatedFanoutReductionPct": 41.2
-  }
+  ]
 }
 ```
 
-Required upstream semantics:
+Compatibility semantics:
 
-- Every proposal is assigned immutable metadata at ingest:
-  - `priorityClass`: `standard | express | priority`
-  - `ingestEpoch`
-  - `targetFinalityEpoch` (`+2`, `+1`, or immediate)
-- Counters are maintained by `(epoch, priorityClass, state)` and rolled forward by epoch transitions.
-- Dashboard adapters must not infer epoch residency from global aggregate counters when first-class epoch counters are available.
+- Gateway adapters may derive this overlay from aggregate queue counters when first-class epoch residency is no longer maintained upstream.
+- Consumers must treat `/ops/v1/proposals/release-flow` as canonical for scheduling, pressure, and release-stage state.
+- `/ops/v1/proposals/epochs` exists only to preserve older cards and runbooks during the migration.
 
 ### 17) `GET /ops/v1/signals`
 
@@ -576,6 +562,46 @@ Verifier pressure signals (for queue bottleneck triage):
 - `verifier.queue_wait_max_ms`
 - `verifier.error_count`
 
+### 18) `GET /ops/v1/blockchain/config`
+
+Purpose: canonical blockchain runtime/tuning payload for Config & Tuning dashboard surfaces.
+
+`data` shape:
+
+```json
+{
+  "mode": "sepolia",
+  "network": "Sepolia Testnet",
+  "chainId": 11155111,
+  "contractAddress": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0",
+  "rpcUrl": "https://sepolia.infura.io/v3/***",
+  "requiresMetaMask": true,
+  "useTestnet": true,
+  "displayName": "✅ SEPOLIA TESTNET",
+  "badgeColor": "#10b981",
+  "configSource": "osgi-config-admin",
+  "gasModel": {
+    "source": "measured-sepolia-baseline",
+    "gasPriceGwei": 3,
+    "writeGasUnitsStandard": 74534,
+    "writeGasUnitsExpress": 74534,
+    "writeGasUnitsPriority": 74534
+  },
+  "tiers": {
+    "STANDARD": {
+      "tier": 0,
+      "maxDelay": "13 min",
+      "baseFeeWei": "5000000000000000",
+      "gasUnits": 74534,
+      "gasPriceGwei": 3,
+      "estimatedGasFeeWei": "223602000000000",
+      "estimatedTotalWei": "5223602000000000",
+      "estimatedCost": "~0.005224 ETH"
+    }
+  }
+}
+```
+
 ## State Semantics (Canonical)
 
 Allowed states:
@@ -610,20 +636,26 @@ Compatibility notes:
 - `/v1/aeron/raft-metrics` -> `/ops/v1/raft`
 - `/v1/aeron/replication-lag` -> `/ops/v1/replication`
 - `/v1/proposals/queue/stats` -> `/ops/v1/queue`
-- `/v1/proposals/queue/stats` -> `/ops/v1/proposals`
-- `/v1/proposals/queue/stats` + `/v1/consensus/status` (+ epoch/priority counters when available) -> `/ops/v1/proposals/epochs`
+- `/v1/proposals/queue/stats` -> `/ops/v1/proposals/release-flow`
+- `/v1/proposals/release-flow` -> `/ops/v1/proposals/release-flow`
+- `/v1/explorer/release-flow` -> `/ops/v1/explorer/release-flow`
+- `/v1/proposals/queue/stats` + `/v1/consensus/status` (+ epoch/priority counters when available) -> `/ops/v1/proposals/epochs` (compatibility overlay; deprecated)
+- `/v1/explorer/epochs` -> `/ops/v1/explorer/epochs` (compatibility overlay; deprecated)
 - `/health/deep` -> `/ops/v1/health`
 - `/v1/events/recent` -> `/ops/v1/events/recent`
 - `/v1/events/stats` -> `/ops/v1/events/stats`
 - `/v1/consensus/status` + `/v1/proposals/queue/stats` -> `/ops/v1/finality`
 - `/api/segments/tars` (+ `/health/deep` for head metadata) -> `/ops/v1/tarmk`
 - `/api/segments/tars` -> `/ops/v1/tar-chain`
+- `/v1/blockchain/config` -> `/ops/v1/blockchain/config`
 
 ## Backward and Forward Compatibility
 
 - UI must not depend on undocumented fields.
 - Gateway may compose from multiple upstream endpoints.
 - Upstream shape drift is absorbed by gateway adapters, not dashboard blocks.
+- Canonical operator surfaces are `/ops/v1/proposals/release-flow` and `/ops/v1/explorer/release-flow`.
+- `/ops/v1/proposals/epochs` and `/ops/v1/explorer/epochs` remain compatibility/deprecated overlays only.
 
 ## Initial Test Matrix
 

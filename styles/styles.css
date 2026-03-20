@@ -328,3 +328,9 @@ main .section:first-of-type::after {
 .ops-refresh-checkbox:checked::after {
   transform: translateX(16px);
 }
+
+/* Site-wide: polling disabled by default; use browser refresh for updates. */
+.ops-refresh-button,
+.ops-refresh-toggle {
+  display: none !important;
+}

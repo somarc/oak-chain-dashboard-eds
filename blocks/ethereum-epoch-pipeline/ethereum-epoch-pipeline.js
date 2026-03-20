@@ -49,19 +49,16 @@ export default function decorate(block) {
   const runtime = getOpsRuntimeConfig();
   const config = readBlockConfig(block);
   const apiBase = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.finality);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.finality ?? 0;
+  const refreshSeconds = Number(refreshSetting);
   const finalityEndpoint = readConfig(config, 'finality-endpoint', 'finalityEndpoint') || runtime.endpoints.finality;
 
   const shell = document.createElement('div');
   shell.className = 'epoch-pipeline-shell';
 
-  const meta = document.createElement('p');
-  meta.className = 'epoch-pipeline-meta';
-  meta.textContent = `Polling ${apiBase} every ${refreshSeconds}s`;
-
   const subtitle = document.createElement('p');
   subtitle.className = 'epoch-pipeline-subtitle';
-  subtitle.textContent = 'Proposals flow through finality stages using Ethereum epoch semantics.';
+  subtitle.textContent = 'Ethereum epochs are shown as a finality overlay. Adaptive release scheduling now lives in /ops/v1/proposals/release-flow.';
 
   const stages = document.createElement('div');
   stages.className = 'epoch-pipeline-stages';
@@ -69,7 +66,7 @@ export default function decorate(block) {
   const footer = document.createElement('p');
   footer.className = 'epoch-pipeline-footer';
 
-  shell.append(meta, subtitle, stages, footer);
+  shell.append(subtitle, stages, footer);
   block.replaceChildren(shell);
 
   async function refresh() {
@@ -83,14 +80,14 @@ export default function decorate(block) {
 
       stages.innerHTML = '';
       stages.append(
-        stageCard('Pending Proposals', data.pendingProposals ?? 0, `Across ${data.pendingEpochs ?? 0} pending epochs`, 'stage-ingest'),
-        stageCard('Current Epoch', data.currentEpoch ?? 0, `Ethereum epoch ${data.ethereumEpoch ?? 0}`, 'stage-current'),
-        stageCard('Finalized Epoch', data.finalizedEpoch ?? 0, `${gap} epoch(s) until finality`, 'stage-finalized'),
+        stageCard('In-Flight Work', data.pendingProposals ?? 0, `Across ${data.pendingEpochs ?? 0} compatibility epochs`, 'stage-ingest'),
+        stageCard('Epoch Overlay Head', data.currentEpoch ?? 0, `Ethereum checkpoint ${data.ethereumEpoch ?? 0}`, 'stage-current'),
+        stageCard('Finalized Overlay', data.finalizedEpoch ?? 0, `${gap} epoch(s) until finality`, 'stage-finalized'),
       );
 
       const finalizedCurrent = data.totalFinalized ?? 0;
       const finalizedLifetime = data.totalFinalizedLifetime ?? finalizedCurrent;
-      footer.textContent = `Total queued: ${data.totalQueued ?? 0} • Finalized (window): ${finalizedCurrent} • Finalized (lifetime): ${finalizedLifetime} • Finality gap: ${gap}`;
+      footer.textContent = `Total queued: ${data.totalQueued ?? 0} • Finalized (window): ${finalizedCurrent} • Finalized (lifetime): ${finalizedLifetime} • Overlay gap: ${gap}`;
     } catch (error) {
       stages.innerHTML = '';
       footer.textContent = `Finality pipeline unavailable: ${error.message}`;

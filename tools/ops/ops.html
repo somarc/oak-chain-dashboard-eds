@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Oak Ops</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Operator control-plane app for Oak Chain adaptive release flow, signals, configuration drift, and GC posture."
+    />
+    <base href="/tools/" />
+    <link rel="stylesheet" href="/tools/ops/ops.css" />
+    <script src="/tools/ops/ops.js" type="module"></script>
+  </head>
+  <body>
+    <div class="ops-app">
+      <header class="app-header">
+        <div class="header-copy">
+          <p class="eyebrow">Oak Chain Tools</p>
+          <h1>Oak Ops</h1>
+          <p class="subtitle">
+            Adaptive release control plane for operators. Release flow is canonical; epoch data is overlay-only.
+          </p>
+        </div>
+        <div class="header-actions">
+          <div class="runtime-card">
+            <span class="runtime-label">API base</span>
+            <strong id="runtime-base">--</strong>
+          </div>
+          <button id="refresh-btn" class="btn btn-primary" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <nav class="panel-nav" aria-label="Oak ops panels">
+        <button class="panel-tab is-active" type="button" data-panel="overview">Overview</button>
+        <button class="panel-tab" type="button" data-panel="release">Release Flow</button>
+        <button class="panel-tab" type="button" data-panel="signals">Signals</button>
+        <button class="panel-tab" type="button" data-panel="config">Config</button>
+        <button class="panel-tab" type="button" data-panel="gc">GC</button>
+        <button class="panel-tab" type="button" data-panel="debug">Debug</button>
+      </nav>
+
+      <main class="app-main">
+        <section class="hero-grid">
+          <article class="hero-card">
+            <p class="hero-label">Cluster</p>
+            <p id="cluster-state" class="hero-value">--</p>
+            <p id="cluster-detail" class="hero-detail">Awaiting sample</p>
+          </article>
+          <article class="hero-card">
+            <p class="hero-label">Governor</p>
+            <p id="governor-state" class="hero-value">--</p>
+            <p id="governor-detail" class="hero-detail">Awaiting sample</p>
+          </article>
+          <article class="hero-card">
+            <p class="hero-label">Signals</p>
+            <p id="signal-status" class="hero-value">--</p>
+            <p id="signal-detail" class="hero-detail">Awaiting sample</p>
+          </article>
+          <article class="hero-card">
+            <p class="hero-label">Release Mode</p>
+            <p id="release-mode" class="hero-value">--</p>
+            <p id="release-detail" class="hero-detail">Awaiting sample</p>
+          </article>
+        </section>
+
+        <section id="panel-overview" class="panel-section is-active">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Panel</p>
+              <h2>Overview</h2>
+            </div>
+            <p id="last-updated" class="section-meta">Updated --</p>
+          </div>
+          <div id="overview-grid" class="metric-grid"></div>
+        </section>
+
+        <section id="panel-release" class="panel-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Canonical</p>
+              <h2>Adaptive Release Flow</h2>
+            </div>
+            <p class="section-meta">Sourced from <code>/ops/v1/proposals/release-flow</code></p>
+          </div>
+          <div id="release-stage-grid" class="stage-grid"></div>
+          <div id="release-summary" class="summary-grid"></div>
+          <p id="release-note" class="section-note">Awaiting release-flow sample.</p>
+        </section>
+
+        <section id="panel-signals" class="panel-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Health Model</p>
+              <h2>Signals</h2>
+            </div>
+            <p class="section-meta">Prioritized operator signals and telemetry gaps</p>
+          </div>
+          <div id="signals-summary" class="metric-grid"></div>
+          <div id="signals-grid" class="signal-grid"></div>
+        </section>
+
+        <section id="panel-config" class="panel-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Tuning</p>
+              <h2>Config Drift</h2>
+            </div>
+            <p class="section-meta">Runtime-readable deltas versus defaults</p>
+          </div>
+          <div id="config-summary" class="metric-grid"></div>
+          <div id="config-changes" class="stack-list"></div>
+        </section>
+
+        <section id="panel-gc" class="panel-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Storage</p>
+              <h2>GC and Compaction</h2>
+            </div>
+            <p class="section-meta">Debt, reclaimable footprint, and compaction readiness</p>
+          </div>
+          <div id="gc-grid" class="metric-grid"></div>
+        </section>
+
+        <section id="panel-debug" class="panel-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Engineering</p>
+              <h2>Debug Surfaces</h2>
+            </div>
+            <p class="section-meta">Raw queue stats remain available here, not as the primary operator view.</p>
+          </div>
+          <div class="debug-grid">
+            <article class="debug-card">
+              <h3>Queue Stats</h3>
+              <pre id="debug-queue">Awaiting sample.</pre>
+            </article>
+            <article class="debug-card">
+              <h3>Release Flow</h3>
+              <pre id="debug-release">Awaiting sample.</pre>
+            </article>
+            <article class="debug-card">
+              <h3>Signals</h3>
+              <pre id="debug-signals">Awaiting sample.</pre>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

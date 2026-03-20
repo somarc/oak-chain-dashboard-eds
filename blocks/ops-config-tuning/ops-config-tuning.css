@@ -35,6 +35,8 @@
 }
 
 .ops-config-tuning .ops-config-tuning-summary,
+.ops-config-tuning .ops-config-tuning-blockchain,
+.ops-config-tuning .ops-config-tuning-tiers,
 .ops-config-tuning .ops-config-tuning-sources,
 .ops-config-tuning .ops-config-tuning-changes {
   border: 1px solid var(--border-primary);
@@ -60,6 +62,42 @@
 .ops-config-tuning .ops-config-tuning-summary-row strong {
   font-family: var(--mono-font-family);
   color: var(--text-primary);
+}
+
+.ops-config-tuning .ops-config-tuning-tier {
+  padding: 0.65rem;
+  border: 1px solid rgba(132, 152, 207, 0.2);
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+  background: rgba(12, 18, 34, 0.42);
+}
+
+.ops-config-tuning .ops-config-tuning-tier:last-child {
+  margin-bottom: 0;
+}
+
+.ops-config-tuning .ops-config-tuning-tier header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.ops-config-tuning .ops-config-tuning-tier h4 {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--mono-font-family);
+}
+
+.ops-config-tuning .ops-config-tuning-tier p {
+  margin: 0.35rem 0 0;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
+.ops-config-tuning .ops-config-tuning-tier code {
+  font-family: var(--mono-font-family);
 }
 
 .ops-config-tuning .ops-config-tuning-change {

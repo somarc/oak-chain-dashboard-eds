@@ -1,48 +1,101 @@
+.proposal-epoch-flow .proposal-epoch-flow-shell {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-metas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .proposal-epoch-flow .proposal-epoch-flow-meta {
   display: inline-flex;
-  margin: 0 0 1rem;
-  border: 1px solid rgba(34, 211, 238, 0.28);
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
-  background: rgba(34, 211, 238, 0.1);
-  color: var(--brand-secondary);
-  font-size: 0.8rem;
+  background: rgba(15, 23, 42, 0.55);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
   font-family: var(--mono-font-family);
   line-height: 1;
 }
 
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-ready,
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-packing,
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-mempool,
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-overflow {
+  color: var(--text-primary);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-ready {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-packing {
+  border-color: rgba(34, 211, 238, 0.42);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-mempool {
+  border-color: rgba(250, 204, 21, 0.42);
+  background: rgba(250, 204, 21, 0.12);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-meta.is-overflow {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
 .proposal-epoch-flow .proposal-epoch-flow-rail {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 0.75rem;
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-card {
-  border: 1px solid var(--border-primary);
-  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
   background: linear-gradient(145deg, rgba(22, 33, 62, 0.8), rgba(16, 24, 44, 0.95));
-  padding: 0.85rem;
+  padding: 0.9rem;
   box-shadow: 0 8px 20px rgba(2, 6, 23, 0.28);
 }
 
-.proposal-epoch-flow .proposal-epoch-flow-card.is-finalized {
+.proposal-epoch-flow .proposal-epoch-flow-card.is-ready {
   border-color: rgba(16, 185, 129, 0.45);
 }
 
-.proposal-epoch-flow .proposal-epoch-flow-card.is-current {
+.proposal-epoch-flow .proposal-epoch-flow-card.is-packing {
   border-color: rgba(34, 211, 238, 0.45);
 }
 
-.proposal-epoch-flow .proposal-epoch-flow-card.is-next {
+.proposal-epoch-flow .proposal-epoch-flow-card.is-mempool {
   border-color: rgba(250, 204, 21, 0.4);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card.is-throttled,
+.proposal-epoch-flow .proposal-epoch-flow-card.is-overflow {
+  border-color: rgba(248, 113, 113, 0.42);
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.7rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0 0 0.8rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-title-wrap {
+  display: grid;
+  gap: 0.22rem;
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-card-epoch {
@@ -50,20 +103,52 @@
   color: var(--text-primary);
   font-family: var(--mono-font-family);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.4;
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-card-status {
   margin: 0;
-  border: 1px solid rgba(34, 211, 238, 0.42);
+  border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 999px;
   padding: 0.2rem 0.58rem;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--brand-secondary);
+  color: #cbd5e1;
   font-family: var(--mono-font-family);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-status.is-ready {
+  border-color: rgba(16, 185, 129, 0.42);
+  background: rgba(16, 185, 129, 0.12);
+  color: #86efac;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-status.is-packing {
+  border-color: rgba(34, 211, 238, 0.42);
   background: rgba(34, 211, 238, 0.14);
+  color: var(--brand-secondary);
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-status.is-mempool {
+  border-color: rgba(250, 204, 21, 0.42);
+  background: rgba(250, 204, 21, 0.14);
+  color: #fde68a;
+}
+
+.proposal-epoch-flow .proposal-epoch-flow-card-status.is-throttled,
+.proposal-epoch-flow .proposal-epoch-flow-card-status.is-overflow {
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-grid {
@@ -91,64 +176,30 @@
   margin: 0.18rem 0 0;
   color: var(--text-primary);
   font-family: var(--mono-font-family);
-  font-size: 0.88rem;
-}
-
-.proposal-epoch-flow .proposal-epoch-flow-connector {
-  display: grid;
-  justify-items: center;
-  gap: 0.35rem;
-}
-
-.proposal-epoch-flow .proposal-epoch-flow-connector-line {
-  display: block;
-  width: 2px;
-  height: 22px;
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.7), rgba(148, 163, 184, 0.35));
-}
-
-.proposal-epoch-flow .proposal-epoch-flow-connector-label {
-  color: var(--text-secondary);
-  font-size: 0.72rem;
-  font-family: var(--mono-font-family);
+  font-size: 0.9rem;
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-note {
-  margin: 0.7rem 0 0;
+  margin: 0;
   color: var(--text-secondary);
   font-size: 0.79rem;
+  line-height: 1.5;
 }
 
 .proposal-epoch-flow .proposal-epoch-flow-updated {
-  margin: 0.45rem 0 0;
+  margin: 0;
   color: var(--text-tertiary);
   font-size: 0.76rem;
   font-family: var(--mono-font-family);
 }
 
 @media (width >= 900px) {
+  .proposal-epoch-flow .proposal-epoch-flow-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .proposal-epoch-flow .proposal-epoch-flow-rail {
-    flex-direction: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: stretch;
-    gap: 0.6rem;
-    overflow-x: auto;
-    padding-bottom: 0.2rem;
   }
-
-  .proposal-epoch-flow .proposal-epoch-flow-card {
-    min-width: 260px;
-    flex: 1 1 0;
-  }
-
-  .proposal-epoch-flow .proposal-epoch-flow-connector {
-    min-width: 86px;
-    align-self: center;
-  }
-
-  .proposal-epoch-flow .proposal-epoch-flow-connector-line {
-    width: 54px;
-    height: 2px;
-    background: linear-gradient(90deg, rgba(34, 211, 238, 0.7), rgba(148, 163, 184, 0.35));
-  }
-
 }

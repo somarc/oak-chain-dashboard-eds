@@ -57,6 +57,23 @@ function createSummaryRow(label, value) {
   return row;
 }
 
+function createBlockchainTierCard(tierName, tierData) {
+  const card = document.createElement('article');
+  card.className = 'ops-config-tuning-tier';
+  const maxDelay = tierData && tierData.maxDelay ? String(tierData.maxDelay) : 'n/a';
+  const estimatedCost = tierData && tierData.estimatedCost ? String(tierData.estimatedCost) : 'n/a';
+  const estimatedTotalWei = tierData && tierData.estimatedTotalWei ? String(tierData.estimatedTotalWei) : 'n/a';
+  card.innerHTML = `
+    <header>
+      <h4>${tierName}</h4>
+      <span>${maxDelay}</span>
+    </header>
+    <p>Estimated: <strong>${estimatedCost}</strong></p>
+    <p>Wei: <code>${estimatedTotalWei}</code></p>
+  `;
+  return card;
+}
+
 function createChangeRow(change) {
   const row = document.createElement('article');
   row.className = 'ops-config-tuning-change';
@@ -76,6 +93,7 @@ function render(shell, payloads) {
   const delta = unwrapEnvelope(payloads.delta) || {};
   const coverage = unwrapEnvelope(payloads.coverage) || {};
   const sources = unwrapEnvelope(payloads.sources) || {};
+  const blockchain = unwrapEnvelope(payloads.blockchain) || {};
   const summary = delta.summary || {};
   const changed = Array.isArray(delta.changed) ? delta.changed : [];
 
@@ -83,6 +101,9 @@ function render(shell, payloads) {
   const expertChanged = safeInt(summary.expertOnlyChanged, 0);
   const guardedChanged = safeInt(summary.guardedChanged, 0);
   const coveragePct = safeInt((coverage.summary || {}).coveragePercent, 0);
+  const gasModel = blockchain && typeof blockchain.gasModel === 'object' ? blockchain.gasModel : {};
+  const tierMap = blockchain && typeof blockchain.tiers === 'object' ? blockchain.tiers : {};
+  const blockchainError = extractErrorMessage(payloads.blockchain);
 
   const topChanges = document.createElement('section');
   topChanges.className = 'ops-config-tuning-changes';
@@ -113,9 +134,34 @@ function render(shell, payloads) {
     createSummaryRow('Coverage', `${coveragePct}%`),
   );
 
+  const blockchainPanel = document.createElement('section');
+  blockchainPanel.className = 'ops-config-tuning-blockchain';
+  blockchainPanel.append(
+    createSummaryRow('Chain Mode', blockchain.mode || 'n/a'),
+    createSummaryRow('Network', blockchain.network || 'n/a'),
+    createSummaryRow('Config Source', blockchain.configSource || 'n/a'),
+    createSummaryRow('Gas Price (Gwei)', gasModel.gasPriceGwei ?? 'n/a'),
+    createSummaryRow('Write Gas Standard', gasModel.writeGasUnitsStandard ?? 'n/a'),
+    createSummaryRow('Write Gas Express', gasModel.writeGasUnitsExpress ?? 'n/a'),
+    createSummaryRow('Write Gas Priority', gasModel.writeGasUnitsPriority ?? 'n/a'),
+  );
+
+  const tiersPanel = document.createElement('section');
+  tiersPanel.className = 'ops-config-tuning-tiers';
+  const tierOrder = ['STANDARD', 'EXPRESS', 'PRIORITY'];
+  const renderedTiers = tierOrder.filter((tier) => tierMap[tier]).map((tier) => createBlockchainTierCard(tier, tierMap[tier]));
+  if (!renderedTiers.length) {
+    const noTiers = document.createElement('p');
+    noTiers.className = 'ops-config-tuning-empty';
+    noTiers.textContent = blockchainError ? `Blockchain contract unavailable: ${blockchainError}` : 'Blockchain tier estimates unavailable.';
+    tiersPanel.append(noTiers);
+  } else {
+    renderedTiers.forEach((tierCard) => tiersPanel.append(tierCard));
+  }
+
   const left = document.createElement('div');
   left.className = 'ops-config-tuning-col';
-  left.append(summaryPanel);
+  left.append(summaryPanel, blockchainPanel, tiersPanel);
 
   const right = document.createElement('div');
   right.className = 'ops-config-tuning-col';
@@ -129,13 +175,17 @@ export default async function decorate(block) {
   const config = readBlockConfig(block);
 
   const apiBase = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.configTuning || 30);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.configTuning ?? 0;
+  const refreshSeconds = Number(refreshSetting);
 
   const endpoints = {
     effective: readConfig(config, 'config-endpoint', 'configEndpoint') || runtime.endpoints.configOsgi,
     coverage: readConfig(config, 'coverage-endpoint', 'coverageEndpoint') || runtime.endpoints.configOsgiCoverage,
     delta: readConfig(config, 'delta-endpoint', 'deltaEndpoint') || runtime.endpoints.configOsgiDelta,
     sources: readConfig(config, 'sources-endpoint', 'sourcesEndpoint') || runtime.endpoints.configOsgiSources,
+    blockchain: readConfig(config, 'blockchain-endpoint', 'blockchainEndpoint')
+      || runtime.endpoints.blockchainConfig
+      || '/ops/v1/blockchain/config',
   };
 
   const shell = document.createElement('section');
@@ -172,14 +222,28 @@ export default async function decorate(block) {
       return payload;
     };
 
-    const [effective, coverage, delta, sources] = await Promise.all([
+    const fetchOptionalJson = async (url) => {
+      if (!url) return {};
+      try {
+        return await fetchJson(url);
+      } catch (e) {
+        return {
+          error: {
+            message: e && e.message ? e.message : String(e),
+          },
+        };
+      }
+    };
+
+    const [effective, coverage, delta, sources, blockchain] = await Promise.all([
       fetchJson(buildUrl(apiBase, endpoints.effective)),
       fetchJson(buildUrl(apiBase, endpoints.coverage)),
       fetchJson(buildUrl(apiBase, endpoints.delta)),
       fetchJson(buildUrl(apiBase, endpoints.sources)),
+      fetchOptionalJson(buildUrl(apiBase, endpoints.blockchain)),
     ]);
     render(shell, {
-      effective, coverage, delta, sources,
+      effective, coverage, delta, sources, blockchain,
     });
     markOpsPageRefreshed('config');
   };

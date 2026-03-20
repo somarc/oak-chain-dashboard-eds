@@ -217,7 +217,8 @@ export default function decorate(block) {
   const runtime = getOpsRuntimeConfig();
   const config = readBlockConfig(block);
   const apiBase = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.raftCluster);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.raftCluster ?? 0;
+  const refreshSeconds = Number(refreshSetting);
   const selfNodeId = Number(readConfig(config, 'self-node-id', 'selfNodeId') || runtime.defaults.selfNodeId);
 
   const clusterEndpoint = readConfig(config, 'cluster-endpoint', 'clusterEndpoint') || runtime.endpoints.cluster;
@@ -226,10 +227,6 @@ export default function decorate(block) {
 
   const shell = document.createElement('div');
   shell.className = 'aeron-raft-shell';
-
-  const meta = document.createElement('p');
-  meta.className = 'aeron-raft-meta';
-  meta.textContent = `Polling ${apiBase} every ${refreshSeconds}s`;
 
   const stats = document.createElement('div');
   stats.className = 'aeron-raft-stats';
@@ -240,7 +237,7 @@ export default function decorate(block) {
   const nodes = document.createElement('div');
   nodes.className = 'aeron-raft-nodes';
 
-  shell.append(meta, stats, graph, nodes);
+  shell.append(stats, graph, nodes);
   block.replaceChildren(shell);
 
   async function refresh() {

@@ -53,21 +53,31 @@ function cell(text, className = '') {
 }
 
 function renderMatrix(tableBody, payload) {
-  const stateByType = payload.stateByType || {};
+  const types = payload.types || {};
+  const states = payload.states || {};
+  const writeCount = asNum(types.write, 0);
+  const deleteCount = asNum(types.delete, 0);
+  const totalCount = Math.max(asNum(types.total, 0), writeCount + deleteCount);
+  const pct = (count) => (totalCount > 0 ? `${((count / totalCount) * 100).toFixed(1)}%` : '0.0%');
+
   const rows = [
-    ['WRITE', stateByType.write || {}],
-    ['DELETE', stateByType.delete || {}],
-    ['TOTAL', payload.states || {}],
+    ['WRITE', formatCount(writeCount), pct(writeCount), 'n/a'],
+    ['DELETE', formatCount(deleteCount), pct(deleteCount), 'n/a'],
+    [
+      'TOTAL',
+      formatCount(totalCount),
+      '100.0%',
+      `U:${formatCount(states.unverified)} V:${formatCount(states.verified)} F:${formatCount(states.finalized)} R:${formatCount(states.rejected)}`,
+    ],
   ];
 
-  tableBody.replaceChildren(...rows.map(([label, values]) => {
+  tableBody.replaceChildren(...rows.map(([type, count, share, split]) => {
     const tr = document.createElement('tr');
     tr.append(
-      cell(label, 'proposal-state-matrix-type'),
-      cell(formatMaybe(values.unverified)),
-      cell(formatMaybe(values.verified)),
-      cell(formatMaybe(values.finalized)),
-      cell(formatMaybe(values.rejected)),
+      cell(type, 'proposal-state-matrix-type'),
+      cell(count),
+      cell(share),
+      cell(split),
     );
     return tr;
   }));
@@ -135,29 +145,21 @@ function deriveModel(payload) {
 }
 
 function renderAvailability(noteEl, payload) {
-  const availability = payload?.stateByType?.availability;
   const statesLifetime = payload?.statesLifetime || {};
   const lifetimeNote = `Lifetime totals: verified=${formatMaybe(statesLifetime.verified)} finalized=${formatMaybe(statesLifetime.finalized)} rejected=${formatMaybe(statesLifetime.rejected)}.`;
-  if (availability === 'needs_upstream_counters') {
-    noteEl.textContent = `Per-type state splits require additional upstream counters; total row reflects authoritative current-window counts. ${lifetimeNote}`;
-    return;
-  }
-  noteEl.textContent = `State and type counters sourced from queue stats (current window). ${lifetimeNote}`;
+  noteEl.textContent = `Type counts and shares are sourced from queue stats; state splits are authoritative at TOTAL level. ${lifetimeNote}`;
 }
 
 export default function decorate(block) {
   const runtime = getOpsRuntimeConfig();
   const config = readBlockConfig(block);
   const baseUrl = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.proposals || 4);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.proposals ?? 0;
+  const refreshSeconds = Number(refreshSetting);
   const endpoint = readConfig(config, 'proposals-endpoint', 'proposalsEndpoint') || runtime.endpoints.proposals;
 
   const shell = document.createElement('div');
   shell.className = 'proposal-state-matrix-shell';
-
-  const meta = document.createElement('p');
-  meta.className = 'proposal-state-matrix-meta';
-  meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
 
   const pressure = document.createElement('p');
   pressure.className = 'proposal-state-matrix-status';
@@ -189,10 +191,9 @@ export default function decorate(block) {
     <thead>
       <tr>
         <th>Type</th>
-        <th>Unverified</th>
-        <th>Verified</th>
-        <th>Finalized</th>
-        <th>Rejected</th>
+        <th>Count</th>
+        <th>Share</th>
+        <th>State Split</th>
       </tr>
     </thead>
   `;
@@ -207,7 +208,7 @@ export default function decorate(block) {
   updated.className = 'proposal-state-matrix-updated';
   updated.textContent = 'Updated --';
 
-  shell.append(meta, pressure, cards, table, note, updated);
+  shell.append(pressure, cards, table, note, updated);
   block.replaceChildren(shell);
 
   async function refresh() {
@@ -238,7 +239,6 @@ export default function decorate(block) {
       renderMatrix(body, payload);
       renderAvailability(note, payload);
       note.textContent = `${note.textContent} Mempool=${formatCount(model.mempool)} • Backpressure active=${model.bpActive ? 'yes' : 'no'} • Writes=${formatCount(model.writeCount)} • Deletes=${formatCount(model.deleteCount)} • Rejected=${formatCount(model.rejected)} • Sent(current)=${formatCount(model.sentCurrent)}.`;
-      meta.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
       updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
     } catch (error) {
       pressure.className = 'proposal-state-matrix-status is-error';

@@ -51,7 +51,8 @@ export default function decorate(block) {
   const runtime = getOpsRuntimeConfig();
   const config = readBlockConfig(block);
   const apiBase = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.finality || 15);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.finality ?? 0;
+  const refreshSeconds = Number(refreshSetting);
 
   const endpoints = {
     finality: readConfig(config, 'finality-endpoint', 'finalityEndpoint') || runtime.endpoints.finality,
@@ -76,19 +77,15 @@ export default function decorate(block) {
   grid.className = 'ops-finality-status-grid';
 
   const cards = {
-    gap: createCard('Epoch Gap'),
-    epochs: createCard('Pending Epochs'),
-    pending: createCard('Pending Proposals'),
-    finalizedWindow: createCard('Finalized (Window)'),
-    finalizedLifetime: createCard('Finalized (Lifetime)'),
-    finalizedState: createCard('Finality State'),
+    gap: createCard('Epoch Lag'),
+    inflight: createCard('In-Flight'),
+    pending: createCard('Pending Queue'),
+    finalizedState: createCard('State'),
   };
   grid.append(
     cards.gap,
-    cards.epochs,
+    cards.inflight,
     cards.pending,
-    cards.finalizedWindow,
-    cards.finalizedLifetime,
     cards.finalizedState,
   );
 
@@ -126,24 +123,25 @@ export default function decorate(block) {
     const epochsUntilFinality = asNum(finality.epochsUntilFinality, 0);
     const pendingEpochs = asNum(finality.pendingEpochs, 0);
     const pendingProposals = asNum(finality.pendingProposals, 0);
-    const totalQueued = asNum(finality.totalQueued, 0);
-    const totalFinalized = asNum(finality.totalFinalized, 0);
-    const totalFinalizedLifetime = asNum(finality.totalFinalizedLifetime, totalFinalized);
+    const currentEpoch = asNum(finality.currentEpoch, 0);
+    const finalizedEpoch = asNum(finality.finalizedEpoch, 0);
     const states = proposals.states || {};
     const verified = asNum(states.verified, 0);
     const finalized = asNum(states.finalized, 0);
+    const epochLag = Math.max(0, currentEpoch - finalizedEpoch);
+    const inflightGap = Math.max(0, verified - finalized);
+    const allowedLag = Math.max(0, epochsUntilFinality);
+    const hasPendingWork = pendingProposals > 0 || pendingEpochs > 0 || inflightGap > 0;
+    const isDrifting = hasPendingWork && epochLag > allowedLag;
+    const stateLabel = isDrifting ? 'DRIFTING' : (hasPendingWork ? 'DRAINING' : 'STEADY');
+    const stateDetail = `lag=${epochLag}/${allowedLag} • inflight=${inflightGap} • pending=${pendingProposals}`;
 
-    const stateLabel = epochsUntilFinality === 0 && pendingProposals === 0 ? 'STEADY' : 'DRIFTING';
-    const stateDetail = `verified=${verified} • finalized=${finalized}`;
-
-    setCard(cards.gap, `${epochsUntilFinality}`, epochsUntilFinality <= 2 ? 'Within configured target' : 'Beyond target gap');
-    setCard(cards.epochs, `${pendingEpochs}`, `Current epoch: ${asNum(finality.currentEpoch, 0)}`);
-    setCard(cards.pending, `${pendingProposals}`, `Queued scope: ${totalQueued}`);
-    setCard(cards.finalizedWindow, `${totalFinalized}`, 'Current counter window');
-    setCard(cards.finalizedLifetime, `${totalFinalizedLifetime}`, 'Lifetime counter');
+    setCard(cards.gap, `${epochLag}`, `Target lag: ${allowedLag} • Finalized epoch: ${finalizedEpoch}`);
+    setCard(cards.inflight, `${inflightGap}`, `verified=${verified} • finalized=${finalized}`);
+    setCard(cards.pending, `${pendingProposals}`, `pendingEpochs=${pendingEpochs} • currentEpoch=${currentEpoch}`);
     setCard(cards.finalizedState, stateLabel, stateDetail);
 
-    summary.textContent = `Finality gap ${epochsUntilFinality} epoch(s), pending proposals ${pendingProposals}, total finalized ${totalFinalized}.`;
+    summary.textContent = 'STEADY: lag<=target and no in-flight/pending. DRAINING: lag<=target with work in progress. DRIFTING: lag>target with work in progress.';
     markOpsPageRefreshed('finality');
   };
 

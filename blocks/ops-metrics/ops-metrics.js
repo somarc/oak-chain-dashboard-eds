@@ -38,10 +38,25 @@ function readConfig(config, ...keys) {
   return undefined;
 }
 
+function getByPath(payload, key) {
+  if (!payload || typeof payload !== 'object' || !key) return undefined;
+  if (!key.includes('.')) return payload[key];
+  const parts = key.split('.');
+  let current = payload;
+  for (let i = 0; i < parts.length; i += 1) {
+    const part = parts[i];
+    if (!current || typeof current !== 'object' || !(part in current)) {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
 function pickValue(payload, keys, fallback) {
   if (!payload || typeof payload !== 'object') return fallback;
   for (let i = 0; i < keys.length; i += 1) {
-    const value = payload[keys[i]];
+    const value = getByPath(payload, keys[i]);
     if (value !== undefined && value !== null) {
       return value;
     }
@@ -106,9 +121,11 @@ function buildCardViewModel(payload, title = '') {
 
   if (cardTitle.includes('cluster')) {
     const state = pickValue(payload, ['clusterState', 'state'], 'unknown');
-    const leader = pickValue(payload, ['leaderNodeId'], 'n/a');
-    const nodes = pickValue(payload, ['nodes'], []);
-    const nodeCount = Array.isArray(nodes) ? nodes.length : asNum(pickValue(payload, ['nodeCount'], 0), 0);
+    const leader = pickValue(payload, ['leaderNodeId', 'currentLeader', 'leader'], 'n/a');
+    const nodes = getByPath(payload, 'nodes');
+    const nodeCount = Array.isArray(nodes)
+      ? nodes.length
+      : asNum(pickValue(payload, ['nodeCount', 'reachableValidators'], 0), 0);
     return {
       headline: String(state).toUpperCase(),
       pills: [
@@ -154,6 +171,84 @@ function buildCardViewModel(payload, title = '') {
         { label: 'queue', value: String(queuePending) },
         { label: 'mempool', value: String(mempool) },
         { label: 'backpressure', value: String(backpressure) },
+      ],
+    };
+  }
+
+  if (cardTitle.includes('finality')) {
+    const currentEpoch = pickValue(payload, ['currentEpoch', 'headEpoch'], 'n/a');
+    const finalizedEpoch = pickValue(payload, ['finalizedEpoch', 'safeEpoch'], 'n/a');
+    const epochsUntil = pickValue(payload, ['epochsUntilFinality', 'epochLag'], 'n/a');
+    return {
+      headline: `E${currentEpoch}`,
+      pills: [
+        { label: 'finalized', value: `E${finalizedEpoch}` },
+        { label: 'until finality', value: String(epochsUntil) },
+      ],
+    };
+  }
+
+  if (cardTitle.includes('proposals')) {
+    const pending = pickValue(
+      payload,
+      ['queuePressure.pending', 'queuePressure.queuePending', 'states.unverified', 'pendingCount'],
+      0,
+    );
+    const verified = pickValue(payload, ['states.verified', 'verifiedCount', 'statesLifetime.verified'], 0);
+    const finalized = pickValue(
+      payload,
+      ['states.finalized', 'totalFinalizedCount', 'statesLifetime.finalized', 'processedCount'],
+      0,
+    );
+    return {
+      headline: `${pending}`,
+      pills: [
+        { label: 'pending', value: String(pending) },
+        { label: 'verified', value: String(verified) },
+        { label: 'finalized', value: String(finalized) },
+      ],
+    };
+  }
+
+  if (cardTitle.includes('signals')) {
+    const summary = pickValue(payload, ['summary'], {});
+    const critical = pickValue(summary, ['critical'], 0);
+    const warn = pickValue(summary, ['warn'], 0);
+    const ok = pickValue(summary, ['ok'], 0);
+    return {
+      headline: `${critical} critical`,
+      pills: [
+        { label: 'warn', value: String(warn) },
+        { label: 'ok', value: String(ok) },
+      ],
+    };
+  }
+
+  if (cardTitle.includes('config')) {
+    const drift = pickValue(payload, ['summary.changedKeys', 'driftSummary.total', 'summary.totalDrifted'], 0);
+    const coverage = pickValue(payload, ['coverage.percent', 'summary.coveragePercent'], 'n/a');
+    const totalKeys = pickValue(payload, ['summary.totalKeys'], 'n/a');
+    return {
+      headline: `${drift} drift`,
+      pills: [
+        { label: 'coverage', value: String(coverage) },
+        { label: 'keys', value: String(totalKeys) },
+      ],
+    };
+  }
+
+  if (cardTitle.includes('gc')) {
+    const gcEnabled = pickValue(payload, ['gcEnabled'], null);
+    const pendingDebt = pickValue(payload, ['pendingProposals', 'pendingDebt', 'debt.pending'], 0);
+    const executable = pickValue(payload, ['gcConsensusRequired', 'executableDebt', 'debt.executable'], 0);
+    const status = gcEnabled === false
+      ? 'disabled'
+      : (asNum(pendingDebt, 0) > 0 ? 'pending' : 'idle');
+    return {
+      headline: String(status).toUpperCase(),
+      pills: [
+        { label: 'pending', value: String(pendingDebt) },
+        { label: 'consensus', value: String(executable) },
       ],
     };
   }
@@ -302,22 +397,20 @@ export default function decorate(block) {
     ['Raft Metrics', readConfig(config, 'raft-metrics', 'raftMetrics') || runtime.endpoints.raft],
     ['Replication Lag', readConfig(config, 'replication-lag', 'replicationLag') || runtime.endpoints.replication],
     ['Queue Stats', readConfig(config, 'queue-stats', 'queueStats') || runtime.endpoints.queue],
+    ['Finality', readConfig(config, 'finality', 'finalityEndpoint') || runtime.endpoints.finality],
+    ['Proposals', readConfig(config, 'proposals', 'proposalsEndpoint') || runtime.endpoints.proposals],
+    ['Ops Signals', readConfig(config, 'signals', 'signalsEndpoint') || runtime.endpoints.signals],
+    ['Config Drift', readConfig(config, 'config-drift', 'configDrift') || runtime.endpoints.configOsgiDelta],
+    ['GC Status', readConfig(config, 'gc-status', 'gcStatus') || runtime.endpoints.gcStatus],
     ['Health Deep', readConfig(config, 'health-deep', 'healthDeep') || runtime.endpoints.health],
   ].filter(([, endpoint]) => Boolean(endpoint));
 
   const shell = document.createElement('div');
   shell.className = 'ops-metrics-shell';
 
-  const heading = document.createElement('p');
-  heading.className = 'ops-metrics-shell-meta';
-  heading.textContent = `Polling ${baseUrl} every ${refreshSeconds}s`;
-
   const grid = document.createElement('div');
   grid.className = 'ops-metrics-grid';
 
-  const updated = document.createElement('p');
-  updated.className = 'ops-metrics-shell-updated';
-  updated.textContent = 'Updated --';
 
   const cards = endpointPairs.map(([title, endpoint]) => {
     const card = createCard(title);
@@ -325,13 +418,10 @@ export default function decorate(block) {
     return { endpoint, ...card };
   });
 
-  shell.append(heading, grid, updated);
+  shell.append(grid);
   block.replaceChildren(shell);
 
-  const tick = () => Promise.all(cards.map((entry) => updateCard(entry, baseUrl, entry.endpoint)))
-    .finally(() => {
-      updated.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-    });
+  const tick = () => Promise.all(cards.map((entry) => updateCard(entry, baseUrl, entry.endpoint)));
   tick();
   const path = (window.location && window.location.pathname) || '/';
   const isOverviewPage = path === '/' || path === '/index' || path === '/index.html';

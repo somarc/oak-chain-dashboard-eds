@@ -235,7 +235,8 @@ export default function decorate(block) {
   const runtime = getOpsRuntimeConfig();
   const config = readBlockConfig(block);
   const baseUrl = readConfig(config, 'api-base', 'apiBase') || runtime.apiBase;
-  const refreshSeconds = Number(readConfig(config, 'refresh-seconds', 'refreshSeconds') || runtime.refreshSeconds.signals || 4);
+  const refreshSetting = readConfig(config, 'refresh-seconds', 'refreshSeconds') ?? runtime.refreshSeconds.signals ?? 0;
+  const refreshSeconds = Number(refreshSetting);
   const endpoint = readConfig(config, 'signals-endpoint', 'signalsEndpoint') || runtime.endpoints.signals;
   const overviewEndpoint = runtime.endpoints.overview;
   const proposalsEndpoint = runtime.endpoints.proposals;

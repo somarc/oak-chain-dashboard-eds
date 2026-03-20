@@ -1,68 +1,17 @@
-# Oak Chain Aeron Operations
+# Oak Chain Index Template
 
-API-first control plane observability for `oak-segment-consensus`, delivered through EDS blocks.
+Use the existing DA `index` document as a thin landing surface that points into codebus tools.
 
-Note: blocks below are marker-only by design. API base/endpoints/refresh behavior are controlled in code (`scripts/ops-runtime-config.js`), not DA content.
+## Landing Block
 
-## Live Cluster View
-
-| Ops Metrics |
-| --- |
-
-## Proposal State Matrix
-
-| Proposal State Matrix |
-| --- |
-
-## Event Flow
-
-| Ops Feed |
-| --- |
-
-## Aeron Raft Cluster
-
-| Aeron Raft Cluster |
-| --- |
-
-## Ethereum Epoch Finality Pipeline
-
-| Ethereum Epoch Pipeline |
-| --- |
-
-## TarMK Growth State
-
-| TarMK Growth State |
-| --- |
-
-## TAR File Chain
-
-| TAR File Chain |
-| --- |
-
-## Runbook Hooks
-
-- Validate cluster baseline with `/ops/v1/health`, `/ops/v1/cluster`, and `/ops/v1/overview`.
-- Confirm write path pressure with `/ops/v1/queue` and `/ops/v1/events/stats`.
-- Track leader and lag movement with `/ops/v1/cluster` and `/ops/v1/replication`.
-- Keep UI as a read model only; use API and CLI for operational actions.
-
-## API Coverage
-
-| Cards |
-| --- |
-| Overview |
-| Cluster |
-| Raft |
-| Replication |
-| Queue |
-| Proposals |
-| Durability |
-| Health |
-| Events Recent |
-| Events Stats |
-| Transactions Summary |
-| TarMK Growth State |
-| TAR File Chain |
+| Tools Home | | | |
+| --- | --- | --- | --- |
+| hero | Oak Chain EDS | Tools-First Operator Surface | This site is shifting away from authored dashboard pages and toward a proper EDS tools catalogue. Start with Oak Ops. |
+| primary | Canonical App | Oak Ops | Adaptive release flow, governor state, signals, config drift, GC posture, and debug surfaces in one standalone app. [Launch Oak Ops](/tools/ops/ops.html) [Browse Catalogue](/tools/index.html) |
+| card | Primary | Tool Catalogue | Central entry for operator apps and compatibility surfaces as the tools suite grows. [Open catalogue](/tools/index.html) |
+| card | Compatibility | Legacy Views | Queue, finality, config, GC, and TarMK pages remain available while the tools app takes over. [Queue](/queue) [Finality](/finality) [Config](/config) [GC](/gc) |
+| card | Source of Truth | Control Plane | API and CLI remain authoritative. UI is a read model over the edge-worker adapter and backend runtime endpoints. [Read the contract](/docs/ops-api-contract-v1.md) |
+| note | Migration | Tools remain code-first. | The root landing page is still authored content, but the actual apps live under `/tools`. Adaptive `release-flow` is canonical; Ethereum epochs are overlay-only. [Tool Catalogue](/tools/index.html) [Oak Ops](/tools/ops/ops.html) [EDS Integrations](https://www.aem.live/docs/integrations) |
 
 ## Metadata
 
@@ -70,4 +19,5 @@ Note: blocks below are marker-only by design. API base/endpoints/refresh behavio
 | --- | --- |
 | nav | /nav |
 | footer | /footer |
+| title | Oak Chain EDS |
 | template | default |
