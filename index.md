@@ -1,6 +1,6 @@
 | Tools Home | | | |
 | --- | --- | --- | --- |
-| hero | Blockchain AEM | Tools-First Operator Surface | Global P2P Oak Repository. This site is shifting away from authored dashboard pages and toward a proper EDS tools catalogue. Start with Oak Ops. |
+| hero | Blockchain AEM | Tools-First Operator Surface | Global P2P Oak Repository. Oak Chain is a blockchain-anchored Apache Jackrabbit Oak repository that replicates enterprise content across validator nodes for durable, verifiable state. |
 | primary | Canonical App | Oak Ops | Adaptive release flow, governor state, signals, config drift, GC posture, and debug surfaces in one standalone app. [Launch Oak Ops](/tools/ops/ops.html) [Browse Catalogue](/tools/index.html) |
 | card | Primary | Tool Catalogue | Central entry for operator apps and compatibility surfaces as the tools suite grows. [Open catalogue](/tools/index.html) |
 | card | Compatibility | Legacy Views | Queue, finality, config, GC, and TarMK pages remain available while the tools app takes over. [Queue](/queue) [Finality](/finality) [Config](/config) [GC](/gc) |
