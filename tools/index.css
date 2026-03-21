@@ -5,7 +5,7 @@
 }
 
 .hero-grid {
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  grid-template-columns: minmax(0, 1.24fr) minmax(390px, 0.82fr);
 }
 
 .feature-grid {
@@ -64,21 +64,21 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(220px, 0.68fr) minmax(500px, 1.12fr);
-  gap: 36px;
+  grid-template-columns: minmax(280px, 0.84fr) minmax(420px, 1fr);
+  gap: 28px;
   align-items: stretch;
 }
 
 .card-copy {
-  max-width: 23rem;
+  max-width: 27rem;
   align-self: end;
 }
 
 .hero-track-label {
   position: absolute;
   top: 4px;
-  left: 56%;
-  transform: translateX(-10%);
+  left: clamp(48%, 54%, 58%);
+  transform: translateX(-8%);
   margin: 0;
   color: rgba(26, 94, 77, 0.56);
   text-transform: uppercase;
@@ -89,7 +89,7 @@
 
 .hero-evolution {
   position: relative;
-  min-height: 344px;
+  min-height: 328px;
   overflow: hidden;
   align-self: stretch;
 }
@@ -97,9 +97,9 @@
 .hero-evolution::before {
   content: '';
   position: absolute;
-  left: 12%;
-  right: 8%;
-  bottom: 72px;
+  left: 16%;
+  right: 10%;
+  bottom: 82px;
   height: 2px;
   background: linear-gradient(90deg, rgba(24, 59, 48, 0.02), rgba(28, 122, 95, 0.16) 30%, rgba(46, 199, 255, 0.36) 78%, rgba(46, 199, 255, 0));
   box-shadow: 0 0 24px rgba(46, 199, 255, 0.14);
@@ -110,9 +110,9 @@
 .hero-evolution::after {
   content: '';
   position: absolute;
-  right: -1%;
-  top: 8%;
-  width: 74%;
+  right: 2%;
+  top: 12%;
+  width: 68%;
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -123,7 +123,7 @@
 
 .evolution-list {
   position: absolute;
-  inset: 56px 6% 126px 8%;
+  inset: 58px 6% 128px 10%;
 }
 
 .evolution-step {
@@ -142,29 +142,29 @@
 }
 
 .evolution-list .evolution-step:nth-child(1) {
-  left: 4%;
-  top: 12%;
+  left: 2%;
+  top: 14%;
   opacity: 0.28;
   transform: scale(0.78);
 }
 
 .evolution-list .evolution-step:nth-child(2) {
-  left: 22%;
-  top: 30%;
+  left: 18%;
+  top: 31%;
   opacity: 0.44;
   transform: scale(0.88);
 }
 
 .evolution-list .evolution-step:nth-child(3) {
-  left: 46%;
+  left: 42%;
   top: 48%;
   opacity: 0.6;
   transform: scale(0.98);
 }
 
 .evolution-list .evolution-step:nth-child(4) {
-  left: 72%;
-  top: 64%;
+  left: 66%;
+  top: 62%;
   opacity: 0.84;
   transform: scale(1.06);
 }
@@ -192,9 +192,9 @@
 }
 
 .evolution-step--fifth {
-  right: 3%;
-  bottom: 10px;
-  width: min(370px, 86%);
+  right: 2%;
+  bottom: 14px;
+  width: min(390px, 88%);
   max-width: none;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -218,8 +218,8 @@
 }
 
 .evolution-step--fifth .evolution-name {
-  font-size: 1.35rem;
-  line-height: 0.98;
+  font-size: 1.5rem;
+  line-height: 0.96;
 }
 
 .evolution-fifth-copy {
@@ -252,7 +252,7 @@
 }
 
 .hero-card--story h2 {
-  max-width: 7ch;
+  max-width: 6.2ch;
   font-size: clamp(3.3rem, 4.4vw, 4.95rem);
   line-height: 0.92;
 }
@@ -305,11 +305,11 @@
 }
 
 .hero-card--ops .card-copy {
-  max-width: 32rem;
+  max-width: 30rem;
 }
 
 .hero-card--ops .card-body {
-  max-width: 28rem;
+  max-width: 26rem;
 }
 
 .ops-preview {
@@ -457,11 +457,11 @@
   margin: 18px 0 0;
   color: var(--dash-cream-muted);
   font-size: 1.15rem;
-  line-height: 1.62;
+  line-height: 1.56;
 }
 
 .hero-card--story .card-body {
-  max-width: 21ch;
+  max-width: 25ch;
 }
 
 .hero-actions {
@@ -524,13 +524,17 @@
 }
 
 @media (max-width: 1560px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+
   .hero-story-layout {
-    grid-template-columns: minmax(220px, 0.72fr) minmax(430px, 1fr);
-    gap: 22px;
+    grid-template-columns: minmax(260px, 0.82fr) minmax(380px, 1fr);
+    gap: 18px;
   }
 
   .card-copy {
-    max-width: 22rem;
+    max-width: 24rem;
   }
 
   .hero-card--story h2 {
@@ -539,11 +543,11 @@
   }
 
   .hero-evolution {
-    min-height: 304px;
+    min-height: 292px;
   }
 
   .evolution-list {
-    inset: 50px 4% 118px 8%;
+    inset: 50px 4% 118px 6%;
   }
 
   .evolution-list .evolution-step:nth-child(1) {
@@ -565,13 +569,13 @@
   }
 
   .evolution-list .evolution-step:nth-child(4) {
-    left: 66%;
-    top: 64%;
+    left: 62%;
+    top: 61%;
     transform: scale(0.96);
   }
 
   .evolution-step--fifth {
-    width: min(330px, 84%);
+    width: min(342px, 86%);
     padding: 18px 20px 16px;
     gap: 12px;
   }
@@ -593,12 +597,12 @@
 
 @media (max-width: 1360px) {
   .hero-story-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(340px, 1fr);
+    grid-template-columns: minmax(250px, 0.92fr) minmax(320px, 1fr);
     gap: 18px;
   }
 
   .card-copy {
-    max-width: 20rem;
+    max-width: 23rem;
   }
 
   .hero-card--story h2 {
@@ -607,7 +611,7 @@
   }
 
   .card-body {
-    max-width: 18rem;
+    max-width: 22rem;
     font-size: 1.04rem;
   }
 
@@ -620,7 +624,7 @@
   }
 
   .evolution-list {
-    inset: 42px 4% 112px 4%;
+    inset: 42px 3% 112px 2%;
   }
 
   .evolution-list .evolution-step:nth-child(1) {
@@ -629,23 +633,23 @@
   }
 
   .evolution-list .evolution-step:nth-child(2) {
-    left: 18%;
+    left: 14%;
     top: 33%;
   }
 
   .evolution-list .evolution-step:nth-child(3) {
-    left: 42%;
+    left: 34%;
     top: 49%;
   }
 
   .evolution-list .evolution-step:nth-child(4) {
-    left: 70%;
-    top: 64%;
+    left: 56%;
+    top: 63%;
   }
 
   .evolution-step--fifth {
-    width: min(290px, 90%);
-    right: 0;
+    width: min(314px, 92%);
+    right: 0.5%;
     bottom: 12px;
   }
 
@@ -674,7 +678,7 @@
   }
 
   .hero-card--story .card-body {
-    max-width: 28ch;
+    max-width: 36ch;
   }
 
   .hero-card--ops::before,
@@ -696,7 +700,7 @@
   }
 
   .hero-evolution {
-    min-height: 232px;
+    min-height: 246px;
   }
 
   .feature-grid {
@@ -731,22 +735,22 @@
   }
 
   .evolution-list .evolution-step:nth-child(2) {
-    left: 12%;
+    left: 10%;
     top: 34%;
   }
 
   .evolution-list .evolution-step:nth-child(3) {
-    left: 34%;
+    left: 28%;
     top: 49%;
   }
 
   .evolution-list .evolution-step:nth-child(4) {
-    left: 58%;
+    left: 46%;
     top: 64%;
   }
 
   .evolution-step--fifth {
-    width: min(100%, 320px);
+    width: min(100%, 332px);
     right: 0;
   }
 
