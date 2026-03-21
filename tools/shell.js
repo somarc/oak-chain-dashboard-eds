@@ -2,6 +2,94 @@ import { getOpsRuntimeConfig } from '/scripts/ops-runtime-config.js';
 
 export const runtime = getOpsRuntimeConfig();
 
+function currentHostname() {
+  return String(window.location.hostname || '').toLowerCase();
+}
+
+function isLocalHostname(hostname = currentHostname()) {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function isOakchainHostname(hostname = currentHostname()) {
+  return hostname === 'oakchain.net' || hostname.endsWith('.oakchain.net');
+}
+
+function isLocalApiBase(apiBase = runtime.apiBase) {
+  const base = String(apiBase || '').toLowerCase();
+  return base.includes('127.0.0.1') || base.includes('localhost');
+}
+
+function isOakchainApiBase(apiBase = runtime.apiBase) {
+  return String(apiBase || '').toLowerCase().includes('ops.oakchain.net');
+}
+
+function isAdobeIoApiBase(apiBase = runtime.apiBase) {
+  return String(apiBase || '').toLowerCase().includes('adobeio-static.net');
+}
+
+export function getRuntimePresentation() {
+  const hostKind = isLocalHostname()
+    ? 'local'
+    : isOakchainHostname()
+      ? 'oakchain'
+      : 'hosted';
+
+  if (hostKind !== 'local' && isLocalApiBase()) {
+    return {
+      hostKind,
+      mode: 'pending',
+      model: 'Hosted backend pending',
+      displayBase: 'Hosted backend pending',
+      shouldFetch: false,
+      disconnected: true,
+    };
+  }
+
+  if (hostKind === 'local' && isLocalApiBase()) {
+    return {
+      hostKind,
+      mode: 'mock',
+      model: 'Local direct mock',
+      displayBase: runtime.apiBase || 'http://127.0.0.1:8787',
+      shouldFetch: true,
+      disconnected: false,
+    };
+  }
+
+  if (isOakchainApiBase()) {
+    return {
+      hostKind,
+      mode: 'live',
+      model: 'Oak Chain edge domain',
+      displayBase: 'ops.oakchain.net',
+      shouldFetch: true,
+      disconnected: false,
+    };
+  }
+
+  if (isAdobeIoApiBase()) {
+    return {
+      hostKind,
+      mode: 'live',
+      model: 'Adobe I/O edge bridge',
+      displayBase: 'Adobe I/O edge bridge',
+      shouldFetch: true,
+      disconnected: false,
+    };
+  }
+
+  return {
+    hostKind,
+    mode: hostKind === 'local' ? 'mock' : 'live',
+    model: 'Custom gateway runtime',
+    displayBase: runtime.apiBase || '--',
+    shouldFetch: Boolean(runtime.apiBase),
+    disconnected: false,
+  };
+}
+
+export const runtimePresentation = getRuntimePresentation();
+
 export function buildUrl(base, path) {
   if (!path) return null;
   const normalizedBase = String(base || '').replace(/\/$/, '');
@@ -60,13 +148,12 @@ function toneForMode(mode) {
   const normalized = String(mode || '').toLowerCase();
   if (normalized === 'mock') return 'info';
   if (normalized === 'live') return 'success';
+  if (normalized === 'pending') return 'warn';
   return 'neutral';
 }
 
 function detectMode() {
-  const base = String(runtime.apiBase || '').toLowerCase();
-  if (base.includes('127.0.0.1') || base.includes('localhost')) return 'mock';
-  return 'live';
+  return runtimePresentation.mode;
 }
 
 function setActiveNav(activeNav) {
@@ -85,7 +172,7 @@ function renderStaticRuntime(runtimeBaseId = 'runtime-base') {
   const mode = detectMode();
   const wallet = runtime.defaults.gcWallet || '--';
   const walletElement = document.getElementById('status-wallet');
-  setText(runtimeBaseId, runtime.apiBase);
+  setText(runtimeBaseId, runtimePresentation.displayBase);
   if (walletElement) {
     walletElement.textContent = shorten(wallet);
     walletElement.title = wallet;
@@ -113,7 +200,19 @@ export function renderShellStatus(summary, signals, errors = []) {
   setStatusDot(overallTone || 'neutral');
 }
 
-function renderShellFailure(error) {
+export function renderShellDisconnected(message = 'Hosted backend pending') {
+  setBadge('status-validator', 'WAITING', 'neutral');
+  setBadge('status-cluster', 'OFFLINE', 'warn');
+  setBadge('status-signals', 'PENDING', 'neutral');
+  setBadge('status-mode', 'PENDING', 'warn');
+  setStatusDot('warn');
+  return message;
+}
+
+export function renderShellFailure(error) {
+  if (runtimePresentation.hostKind !== 'local') {
+    return renderShellDisconnected('Hosted backend unavailable');
+  }
   setBadge('status-validator', 'DOWN', 'danger');
   setBadge('status-cluster', 'OFFLINE', 'danger');
   setBadge('status-signals', 'UNKNOWN', 'neutral');
@@ -154,6 +253,14 @@ export async function initDashboardShell({
   setActiveNav(activeNav);
   renderStaticRuntime(runtimeBaseId);
 
+  if (runtimePresentation.disconnected) {
+    const message = renderShellDisconnected(runtimePresentation.model);
+    if (lastUpdatedId) {
+      setText(lastUpdatedId, message);
+    }
+    return { data: {}, errors: [message] };
+  }
+
   if (!fetchStatus) {
     return { data: {}, errors: [] };
   }
@@ -163,6 +270,13 @@ export async function initDashboardShell({
       summary: runtime.endpoints.explorerSummary,
       signals: runtime.endpoints.signals,
     });
+    if (Object.keys(result.data).length === 0 && runtimePresentation.hostKind !== 'local') {
+      const message = renderShellDisconnected('Hosted backend unavailable');
+      if (lastUpdatedId) {
+        setText(lastUpdatedId, message);
+      }
+      return { data: {}, errors: [message] };
+    }
     renderShellStatus(result.data.summary, result.data.signals, result.errors);
     if (lastUpdatedId) {
       const refreshedAt = `Updated ${new Date().toLocaleTimeString()}`;
