@@ -1,24 +1,15 @@
-import { getOpsRuntimeConfig } from '/scripts/ops-runtime-config.js';
+import {
+  runtime,
+  fetchOptionalEndpoints,
+  initDashboardShell,
+  renderShellStatus,
+} from '/tools/shell.js';
 
-const runtime = getOpsRuntimeConfig();
+const PANELS = ['overview', 'release', 'signals', 'config', 'gc', 'debug'];
 const app = {
   panel: 'overview',
   timer: null,
 };
-
-function buildUrl(base, path) {
-  if (!path) return null;
-  const normalizedBase = String(base || '').replace(/\/$/, '');
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${normalizedBase}${normalizedPath}`;
-}
-
-function unwrapEnvelope(payload) {
-  if (payload && typeof payload === 'object' && payload.data && typeof payload.data === 'object') {
-    return payload.data;
-  }
-  return payload;
-}
 
 function asNum(value, fallback = 0) {
   const parsed = Number(value);
@@ -48,23 +39,44 @@ function stageTone(count, fallback = 'idle') {
   return asNum(count, 0) > 0 ? fallback : 'idle';
 }
 
-function createMetricCard(label, value, detail, tone = 'neutral') {
+function normalizePanel(panel) {
+  return PANELS.includes(panel) ? panel : 'overview';
+}
+
+function readPanelFromLocation() {
+  const rawHash = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  if (!rawHash) return null;
+  const panel = rawHash.startsWith('panel-') ? rawHash.slice(6) : rawHash;
+  return PANELS.includes(panel) ? panel : null;
+}
+
+function writePanelToLocation(panel, replace = false) {
+  const target = normalizePanel(panel);
+  const url = new URL(window.location.href);
+  url.hash = target;
+  if (url.hash === window.location.hash) return;
+  window.history[replace ? 'replaceState' : 'pushState']({ panel: target }, '', url);
+}
+
+function createMetricCard(label, value, detail, tone = 'neutral', description = '') {
   const card = document.createElement('article');
   card.className = `metric-card is-${tone}`;
   card.innerHTML = `
     <p class="metric-label">${label}</p>
     <p class="metric-value">${value}</p>
+    ${description ? `<p class="metric-description">${description}</p>` : ''}
     <p class="metric-detail">${detail}</p>
   `;
   return card;
 }
 
-function createStageCard(label, value, detail, tone = 'idle') {
+function createStageCard(label, value, detail, tone = 'idle', description = '') {
   const card = document.createElement('article');
   card.className = `stage-card is-${tone}`;
   card.innerHTML = `
     <p class="stage-label">${label}</p>
     <p class="stage-value">${value}</p>
+    ${description ? `<p class="stage-description">${description}</p>` : ''}
     <p class="stage-detail">${detail}</p>
   `;
   return card;
@@ -86,28 +98,44 @@ function createSignalCard(signal) {
   return card;
 }
 
-async function fetchEndpoint(path) {
-  const url = buildUrl(runtime.apiBase, path);
-  if (!url) throw new Error(`Missing endpoint for ${path}`);
-  const response = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!response.ok) {
-    throw new Error(`${path}: HTTP ${response.status}`);
-  }
-  return unwrapEnvelope(await response.json());
-}
-
 function setText(id, value) {
   const element = document.getElementById(id);
   if (element) element.textContent = value;
 }
 
 function activatePanel(panel) {
-  app.panel = panel;
+  const target = normalizePanel(panel);
+  app.panel = target;
   document.querySelectorAll('.panel-tab').forEach((tab) => {
-    tab.classList.toggle('is-active', tab.dataset.panel === panel);
+    const isActive = tab.dataset.panel === target;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+    tab.setAttribute('tabindex', isActive ? '0' : '-1');
   });
   document.querySelectorAll('.panel-section').forEach((section) => {
-    section.classList.toggle('is-active', section.id === `panel-${panel}`);
+    const isActive = section.id === `panel-${target}`;
+    section.classList.toggle('is-active', isActive);
+    section.hidden = !isActive;
+  });
+}
+
+function setPanel(panel, { syncUrl = false, replaceUrl = false } = {}) {
+  const target = normalizePanel(panel);
+  activatePanel(target);
+  if (syncUrl) {
+    writePanelToLocation(target, replaceUrl);
+  }
+}
+
+function syncPanelFromLocation({ canonicalize = false } = {}) {
+  const panel = readPanelFromLocation();
+  if (!panel) {
+    activatePanel('overview');
+    return;
+  }
+  setPanel(panel, {
+    syncUrl: canonicalize && window.location.hash !== `#${panel}`,
+    replaceUrl: true,
   });
 }
 
@@ -146,14 +174,14 @@ function renderOverview(summary, releaseFlow, signals, config, gc) {
   const grid = document.getElementById('overview-grid');
   if (!grid) return;
   grid.replaceChildren(
-    createMetricCard('Leader', cluster.currentLeader || 'n/a', `role=${cluster.role || 'n/a'} • term=${cluster.currentTerm ?? 'n/a'}`),
-    createMetricCard('Nodes', formatNumber(cluster.nodeCount || 0), `quorum=${cluster.quorum ?? 'n/a'} • reachable=${cluster.reachableValidators ?? 'n/a'}`),
-    createMetricCard('Queue Pending', formatNumber(queue.queuePending || 0), `mempool=${formatNumber(queue.mempoolPendingCount || 0)} • backpressure=${formatNumber(queue.backpressurePending || 0)}`),
-    createMetricCard('Verified Resident', formatNumber(releaseFlow?.releaseStages?.verifiedResidentProposalCount || 0), `ready=${formatNumber(releaseFlow?.releaseStages?.releaseReadyProposalCount || 0)} • overflow=${formatNumber(releaseFlow?.releaseStages?.backpressureOverflowProposalCount || 0)}`),
-    createMetricCard('Signals', `${signalSummary.critical ?? 0} critical`, `warn=${signalSummary.warn ?? 0} • ok=${signalSummary.ok ?? 0}`, signalSummary.critical > 0 ? 'critical' : 'ok'),
-    createMetricCard('Config Drift', formatNumber(config?.summary?.changedKeys || 0), `guarded=${config?.summary?.guardedChanged || 0} • expert=${config?.summary?.expertOnlyChanged || 0}`),
-    createMetricCard('GC Status', gc?.gcEnabled ? 'enabled' : 'disabled', `pending=${formatNumber(gc?.pendingProposals || 0)} • consensus=${formatBoolean(gc?.gcConsensusRequired)}`),
-    createMetricCard('Epoch Overlay', `${releaseFlow?.currentEpoch ?? 'n/a'} / ${releaseFlow?.finalizedEpoch ?? 'n/a'}`, `gap=${releaseFlow?.epochsUntilFinality ?? 'n/a'} • overlay-only`),
+    createMetricCard('Leader', cluster.currentLeader || 'n/a', `role=${cluster.role || 'n/a'} • term=${cluster.currentTerm ?? 'n/a'}`, 'neutral', 'Current node acting as the observed cluster coordinator.'),
+    createMetricCard('Nodes', formatNumber(cluster.nodeCount || 0), `quorum=${cluster.quorum ?? 'n/a'} • reachable=${cluster.reachableValidators ?? 'n/a'}`, 'neutral', 'Validator membership size and quorum posture in the current cluster view.'),
+    createMetricCard('Queue Pending', formatNumber(queue.queuePending || 0), `mempool=${formatNumber(queue.mempoolPendingCount || 0)} • backpressure=${formatNumber(queue.backpressurePending || 0)}`, 'neutral', 'Outstanding proposals still waiting somewhere in the queueing path.'),
+    createMetricCard('Verified Resident', formatNumber(releaseFlow?.releaseStages?.verifiedResidentProposalCount || 0), `ready=${formatNumber(releaseFlow?.releaseStages?.releaseReadyProposalCount || 0)} • overflow=${formatNumber(releaseFlow?.releaseStages?.backpressureOverflowProposalCount || 0)}`, 'neutral', 'Verified proposals still resident in release memory before finalization or overflow.'),
+    createMetricCard('Signals', `${signalSummary.critical ?? 0} critical`, `warn=${signalSummary.warn ?? 0} • ok=${signalSummary.ok ?? 0}`, signalSummary.critical > 0 ? 'critical' : 'ok', 'Count of active operator health findings grouped by severity.'),
+    createMetricCard('Config Drift', formatNumber(config?.summary?.changedKeys || 0), `guarded=${config?.summary?.guardedChanged || 0} • expert=${config?.summary?.expertOnlyChanged || 0}`, 'neutral', 'Runtime-visible keys deviating from the shipped blockchain defaults.'),
+    createMetricCard('GC Status', gc?.gcEnabled ? 'enabled' : 'disabled', `pending=${formatNumber(gc?.pendingProposals || 0)} • consensus=${formatBoolean(gc?.gcConsensusRequired)}`, 'neutral', 'Whether distributed garbage collection can run and how much GC work is still queued.'),
+    createMetricCard('Epoch Overlay', `${releaseFlow?.currentEpoch ?? 'n/a'} / ${releaseFlow?.finalizedEpoch ?? 'n/a'}`, `gap=${releaseFlow?.epochsUntilFinality ?? 'n/a'} • overlay-only`, 'neutral', 'Observed head epoch versus finalized epoch; informational overlay, not canonical release truth.'),
   );
 }
 
@@ -164,17 +192,17 @@ function renderReleaseFlow(releaseFlow) {
   if (!stageGrid || !summaryGrid) return;
 
   stageGrid.replaceChildren(
-    createStageCard('Unverified Mempool', formatNumber(stages.unverifiedMempoolCount || 0), `confirmations=${releaseFlow?.requiredConfirmations ?? 'n/a'}`, stageTone(stages.unverifiedMempoolCount, 'mempool')),
-    createStageCard('Verified Packing Buffer', formatNumber(stages.verifiedPackingBufferCount || 0), `wallets=${formatNumber(releaseFlow?.packing?.walletCount || 0)}`, stageTone(stages.verifiedPackingBufferCount, 'packing')),
-    createStageCard('Release Ready', formatNumber(stages.releaseReadyProposalCount || 0), `batches=${formatNumber(stages.releaseReadyBatchCount || 0)}`, stageTone(stages.releaseReadyProposalCount, 'ready')),
-    createStageCard('Backpressure Overflow', formatNumber(stages.backpressureOverflowProposalCount || 0), `batches=${formatNumber(stages.backpressureOverflowBatchCount || 0)}`, stageTone(stages.backpressureOverflowProposalCount, 'overflow')),
+    createStageCard('Unverified Mempool', formatNumber(stages.unverifiedMempoolCount || 0), `confirmations=${releaseFlow?.requiredConfirmations ?? 'n/a'}`, stageTone(stages.unverifiedMempoolCount, 'mempool'), 'Inbound proposals still waiting for enough confirmations to become verified.'),
+    createStageCard('Verified Packing Buffer', formatNumber(stages.verifiedPackingBufferCount || 0), `wallets=${formatNumber(releaseFlow?.packing?.walletCount || 0)}`, stageTone(stages.verifiedPackingBufferCount, 'packing'), 'Verified proposals currently held for batching into release-ready packs.'),
+    createStageCard('Release Ready', formatNumber(stages.releaseReadyProposalCount || 0), `batches=${formatNumber(stages.releaseReadyBatchCount || 0)}`, stageTone(stages.releaseReadyProposalCount, 'ready'), 'Proposals already cleared to ship on the next governor-approved release step.'),
+    createStageCard('Backpressure Overflow', formatNumber(stages.backpressureOverflowProposalCount || 0), `batches=${formatNumber(stages.backpressureOverflowBatchCount || 0)}`, stageTone(stages.backpressureOverflowProposalCount, 'overflow'), 'Work diverted out of the main release lane to protect throughput under pressure.'),
   );
 
   summaryGrid.replaceChildren(
-    createMetricCard('Governor', `${releaseFlow?.governor?.state || 'unknown'} / ${releaseFlow?.governor?.action || 'n/a'}`, `reasons=${(releaseFlow?.governor?.reasonCodes || []).join(', ') || 'none'}`),
-    createMetricCard('Throughput', formatNumber(releaseFlow?.throughput?.totalProposalsSent || 0), `finalized=${formatNumber(releaseFlow?.throughput?.totalFinalizedCount || 0)} • rejected=${formatNumber(releaseFlow?.throughput?.totalRejectedCount || 0)}`),
-    createMetricCard('Packing', formatNumber(releaseFlow?.packing?.queuedProposalCountTotal || 0), `drained=${formatNumber(releaseFlow?.packing?.drainedProposalCountTotal || 0)} • batches=${formatNumber(releaseFlow?.packing?.createdBatchCountTotal || 0)}`),
-    createMetricCard('Overflow', formatNumber(releaseFlow?.overflow?.bufferedProposalCountTotal || 0), `promoted=${formatNumber(releaseFlow?.overflow?.promotedProposalCountTotal || 0)} • separate=${formatBoolean(releaseFlow?.overflow?.separateBufferEnabled)}`),
+    createMetricCard('Governor', `${releaseFlow?.governor?.state || 'unknown'} / ${releaseFlow?.governor?.action || 'n/a'}`, `reasons=${(releaseFlow?.governor?.reasonCodes || []).join(', ') || 'none'}`, 'neutral', 'Decision state of the adaptive controller throttling or advancing release flow.'),
+    createMetricCard('Throughput', formatNumber(releaseFlow?.throughput?.totalProposalsSent || 0), `finalized=${formatNumber(releaseFlow?.throughput?.totalFinalizedCount || 0)} • rejected=${formatNumber(releaseFlow?.throughput?.totalRejectedCount || 0)}`, 'neutral', 'Cumulative proposals processed through the release pipeline over time.'),
+    createMetricCard('Packing', formatNumber(releaseFlow?.packing?.queuedProposalCountTotal || 0), `drained=${formatNumber(releaseFlow?.packing?.drainedProposalCountTotal || 0)} • batches=${formatNumber(releaseFlow?.packing?.createdBatchCountTotal || 0)}`, 'neutral', 'Lifetime work handled by the packer before proposals become release-ready.'),
+    createMetricCard('Overflow', formatNumber(releaseFlow?.overflow?.bufferedProposalCountTotal || 0), `promoted=${formatNumber(releaseFlow?.overflow?.promotedProposalCountTotal || 0)} • separate=${formatBoolean(releaseFlow?.overflow?.separateBufferEnabled)}`, 'neutral', 'Lifetime spillover handled by the overflow buffer when backpressure engages.'),
   );
 
   setText('release-note', releaseFlow?.note || 'No release note available.');
@@ -188,10 +216,10 @@ function renderSignals(signals) {
   if (!summaryGrid || !grid) return;
 
   summaryGrid.replaceChildren(
-    createMetricCard('Critical', formatNumber(summary.critical || 0), 'Immediate operator attention'),
-    createMetricCard('Warn', formatNumber(summary.warn || 0), 'Degraded or trending hot', summary.warn > 0 ? 'warn' : 'neutral'),
-    createMetricCard('OK', formatNumber(summary.ok || 0), 'Healthy observed signals'),
-    createMetricCard('Unknown', formatNumber(summary.unknown || 0), 'Telemetry gaps or unavailable counters', summary.unknown > 0 ? 'unknown' : 'neutral'),
+    createMetricCard('Critical', formatNumber(summary.critical || 0), 'Immediate operator attention', summary.critical > 0 ? 'critical' : 'neutral', 'Signals demanding direct intervention right now.'),
+    createMetricCard('Warn', formatNumber(summary.warn || 0), 'Degraded or trending hot', summary.warn > 0 ? 'warn' : 'neutral', 'Signals that are degraded, noisy, or moving toward a critical state.'),
+    createMetricCard('OK', formatNumber(summary.ok || 0), 'Healthy observed signals', 'ok', 'Signals currently reporting healthy operating conditions.'),
+    createMetricCard('Unknown', formatNumber(summary.unknown || 0), 'Telemetry gaps or unavailable counters', summary.unknown > 0 ? 'unknown' : 'neutral', 'Signals missing telemetry or upstream counters, so health cannot be classified.'),
   );
 
   const prioritized = [...signalList]
@@ -212,10 +240,10 @@ function renderConfig(config) {
   if (!summaryGrid || !changes) return;
 
   summaryGrid.replaceChildren(
-    createMetricCard('Changed Keys', formatNumber(summary.changedKeys || 0), `total=${formatNumber(summary.totalKeys || 0)}`),
-    createMetricCard('Guarded Drift', formatNumber(summary.guardedChanged || 0), 'Runtime or startup settings with operational risk', summary.guardedChanged > 0 ? 'warn' : 'neutral'),
-    createMetricCard('Expert Drift', formatNumber(summary.expertOnlyChanged || 0), 'Needs deliberate owner review', summary.expertOnlyChanged > 0 ? 'warn' : 'neutral'),
-    createMetricCard('Unchanged', formatNumber(summary.unchangedKeys || 0), 'Defaults still intact'),
+    createMetricCard('Changed Keys', formatNumber(summary.changedKeys || 0), `total=${formatNumber(summary.totalKeys || 0)}`, 'neutral', 'Total runtime-visible keys diverging from the default config set.'),
+    createMetricCard('Guarded Drift', formatNumber(summary.guardedChanged || 0), 'Runtime or startup settings with operational risk', summary.guardedChanged > 0 ? 'warn' : 'neutral', 'Sensitive operational settings that changed from their expected defaults.'),
+    createMetricCard('Expert Drift', formatNumber(summary.expertOnlyChanged || 0), 'Needs deliberate owner review', summary.expertOnlyChanged > 0 ? 'warn' : 'neutral', 'Expert-only settings changed and worth explicit owner review.'),
+    createMetricCard('Unchanged', formatNumber(summary.unchangedKeys || 0), 'Defaults still intact', 'neutral', 'Keys that still match the shipped defaults with no runtime drift.'),
   );
 
   changes.replaceChildren(...changed.map((change) => {
@@ -237,10 +265,10 @@ function renderGc(gc, queueStats) {
   const grid = document.getElementById('gc-grid');
   if (!grid) return;
   grid.replaceChildren(
-    createMetricCard('GC Enabled', gc?.gcEnabled ? 'yes' : 'no', `consensus=${formatBoolean(gc?.gcConsensusRequired)}`),
-    createMetricCard('Pending GC Proposals', formatNumber(gc?.pendingProposals || 0), `lastRun=${gc?.lastGcRun || '--'}`),
-    createMetricCard('Finalized Lifetime', formatNumber(queueStats?.totalFinalizedCountLifetime || 0), 'Queue lifetime finalized count'),
-    createMetricCard('Rejected Lifetime', formatNumber(queueStats?.totalRejectedCountLifetime || 0), 'Queue lifetime rejected count'),
+    createMetricCard('GC Enabled', gc?.gcEnabled ? 'yes' : 'no', `consensus=${formatBoolean(gc?.gcConsensusRequired)}`, 'neutral', 'Whether garbage collection is currently allowed to execute in this cluster.'),
+    createMetricCard('Pending GC Proposals', formatNumber(gc?.pendingProposals || 0), `lastRun=${gc?.lastGcRun || '--'}`, 'neutral', 'GC proposals still waiting for enough consensus or scheduling to run.'),
+    createMetricCard('Finalized Lifetime', formatNumber(queueStats?.totalFinalizedCountLifetime || 0), 'Queue lifetime finalized count', 'neutral', 'Total finalized proposals seen by queue stats over the observed node lifetime.'),
+    createMetricCard('Rejected Lifetime', formatNumber(queueStats?.totalRejectedCountLifetime || 0), 'Queue lifetime rejected count', 'neutral', 'Total proposals rejected across the observed queue lifetime.'),
   );
 }
 
@@ -253,32 +281,44 @@ function renderDebug(queueStats, releaseFlow, signals) {
 async function refresh() {
   const refreshButton = document.getElementById('refresh-btn');
   try {
+    setText('runtime-base', runtime.apiBase);
     if (refreshButton) {
       refreshButton.disabled = true;
       refreshButton.textContent = 'Refreshing...';
     }
 
-    const [summary, overview, signals, releaseFlow, config, gc, queueStats] = await Promise.all([
-      fetchEndpoint(runtime.endpoints.explorerSummary),
-      fetchEndpoint(runtime.endpoints.overview),
-      fetchEndpoint(runtime.endpoints.signals),
-      fetchEndpoint(runtime.endpoints.proposalsReleaseFlow),
-      fetchEndpoint(runtime.endpoints.configOsgiDelta),
-      fetchEndpoint(runtime.endpoints.gcStatus),
-      fetchEndpoint(runtime.endpoints.proposalsQueueStats),
-    ]);
+    const { data, errors } = await fetchOptionalEndpoints({
+      summary: runtime.endpoints.explorerSummary,
+      overview: runtime.endpoints.overview,
+      signals: runtime.endpoints.signals,
+      releaseFlow: runtime.endpoints.proposalsReleaseFlow,
+      config: runtime.endpoints.configOsgiDelta,
+      gc: runtime.endpoints.gcStatus,
+      queueStats: runtime.endpoints.proposalsQueueStats,
+    });
 
-    renderHero(summary, releaseFlow, signals);
-    renderOverview(summary, releaseFlow, signals, config, gc);
-    renderReleaseFlow(releaseFlow);
-    renderSignals(signals);
-    renderConfig(config);
-    renderGc(gc, queueStats);
-    renderDebug(queueStats, releaseFlow, signals);
+    if (Object.keys(data).length === 0) {
+      throw new Error(errors[0] || 'No ops endpoints available');
+    }
 
-    setText('runtime-base', runtime.apiBase);
-    setText('last-updated', `Updated ${new Date().toLocaleTimeString()}`);
+    renderHero(data.summary, data.releaseFlow, data.signals);
+    renderOverview(data.summary, data.releaseFlow, data.signals, data.config, data.gc);
+    renderReleaseFlow(data.releaseFlow);
+    renderSignals(data.signals);
+    renderConfig(data.config);
+    renderGc(data.gc, data.queueStats);
+    renderDebug(data.queueStats, data.releaseFlow, data.signals);
+    renderShellStatus(data.summary, data.signals, errors);
+
+    const refreshedAt = `Updated ${new Date().toLocaleTimeString()}`;
+    setText(
+      'last-updated',
+      errors.length > 0
+        ? `${refreshedAt} • degraded (${errors[0]})`
+        : refreshedAt,
+    );
   } catch (error) {
+    renderShellStatus({}, {}, [error.message]);
     setText('last-updated', `Refresh failed: ${error.message}`);
   } finally {
     if (refreshButton) {
@@ -289,9 +329,24 @@ async function refresh() {
 }
 
 function initTabs() {
-  document.querySelectorAll('.panel-tab').forEach((tab) => {
-    tab.addEventListener('click', () => activatePanel(tab.dataset.panel));
+  const tabs = [...document.querySelectorAll('.panel-tab')];
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => setPanel(tab.dataset.panel, { syncUrl: true }));
+    tab.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      let nextIndex = index;
+      if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+      if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = tabs.length - 1;
+      const nextTab = tabs[nextIndex];
+      nextTab.focus();
+      setPanel(nextTab.dataset.panel, { syncUrl: true });
+    });
   });
+  window.addEventListener('popstate', () => syncPanelFromLocation());
+  window.addEventListener('hashchange', () => syncPanelFromLocation());
 }
 
 function initRefresh() {
@@ -308,7 +363,8 @@ function initRefresh() {
 function init() {
   initTabs();
   initRefresh();
-  activatePanel('overview');
+  syncPanelFromLocation({ canonicalize: true });
+  initDashboardShell({ activeNav: 'ops', fetchStatus: false });
   refresh();
 }
 

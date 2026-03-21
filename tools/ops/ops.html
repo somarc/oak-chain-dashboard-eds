@@ -1,150 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Blockchain AEM Ops</title>
+    <title>Blockchain AEM | Oak Ops</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
       content="Oak Ops is the operator control plane for Blockchain AEM, the fifth element of AEM."
     />
     <base href="/tools/" />
+    <link rel="stylesheet" href="/tools/shell.css" />
     <link rel="stylesheet" href="/tools/ops/ops.css" />
     <script src="/tools/ops/ops.js" type="module"></script>
   </head>
   <body>
-    <div class="ops-app">
-      <header class="app-header">
-        <div class="header-copy">
-          <p class="eyebrow">Blockchain AEM</p>
-          <h1>Oak Ops</h1>
-          <p class="subtitle">
-            The fifth element of AEM in operator form. Oak Ops is the adaptive control plane for the global P2P Oak repository. Release flow is canonical; epoch data is overlay-only.
-          </p>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation">
+              <path d="M7 8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V10h1.5A1.5 1.5 0 0 1 20 11.5v6A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-6A1.5 1.5 0 0 1 5.5 10H7V8.5Zm2.5-1a1 1 0 0 0-1 1V10h7V8.5a1 1 0 0 0-1-1h-5Zm-4 4v6A1 1 0 0 0 6.5 18h11a1 1 0 0 0 1-1v-6h-13Z" />
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <p class="brand-title">Blockchain <span>AEM</span></p>
+            <p class="brand-subtitle">Global P2P Oak Repository</p>
+          </div>
         </div>
-        <div class="header-actions">
-          <div class="runtime-card">
-            <span class="runtime-label">API base</span>
-            <strong id="runtime-base">--</strong>
+
+        <nav class="sidebar-nav" aria-label="Tools dashboard navigation">
+          <p class="nav-label">Menu</p>
+          <a class="nav-item" href="/tools/index.html" data-nav="home">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6ZM5.5 5.5v3h3v-3h-3Zm10 0v3h3v-3h-3Zm-10 10v3h3v-3h-3Zm10 0v3h3v-3h-3Z" />
+              </svg>
+            </span>
+            Dashboard
+          </a>
+          <a class="nav-item" href="/tools/ops/ops.html" data-nav="ops">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 1.8 5.97 2.99L12 10.78 6.03 7.79 12 4.8Zm-6.5 4.2 5.75 2.88v7.32L5.5 16.32V9Zm7.25 10.2v-7.32L18.5 9v7.32l-5.75 2.88Z" />
+              </svg>
+            </span>
+            Oak Ops
+          </a>
+          <a class="nav-item" href="/docs/ops-api-contract-v1.md" data-nav="contract">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2H18v18h-9.5A2.5 2.5 0 0 0 6 22V4.5Zm10.5-.5h-8A1 1 0 0 0 7.5 5v13.59c.3-.12.65-.19 1-.19h8V4ZM9 7h6v1.5H9V7Zm0 3h6v1.5H9V10Zm0 3h4.5v1.5H9V13Z" />
+              </svg>
+            </span>
+            Ops Contract
+          </a>
+          <a class="nav-item" href="https://www.aem.live/docs/integrations" data-nav="integrations">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M7 4h10a3 3 0 0 1 3 3v4.5h-1.5V7A1.5 1.5 0 0 0 17 5.5H7A1.5 1.5 0 0 0 5.5 7v10A1.5 1.5 0 0 0 7 18.5h4.5V20H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm7 9h6v2h-1.5v-1h-3v5h1v1.5h-3V19h.5v-5H14v-1Z" />
+              </svg>
+            </span>
+            EDS Integrations
+          </a>
+        </nav>
+
+        <section class="status-panel" aria-labelledby="system-status-title">
+          <div class="panel-heading">
+            <p id="system-status-title" class="nav-label">System Status</p>
+            <span id="status-dot" class="status-dot is-neutral" aria-hidden="true"></span>
           </div>
-          <button id="refresh-btn" class="btn btn-primary" type="button">Refresh</button>
+          <div class="status-list">
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M12 3 5 6v5c0 4.42 2.99 8.55 7 9.72 4.01-1.17 7-5.3 7-9.72V6l-7-3Zm0 1.64 5.5 2.35V11c0 3.65-2.35 7.13-5.5 8.21C8.85 18.13 6.5 14.65 6.5 11V6.99L12 4.64Zm-2.75 4.11h5.5v1.5h-5.5v-1.5Zm0 3h5.5v1.5h-5.5v-1.5Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Validator 0</span>
+              </div>
+              <span id="status-validator" class="status-badge is-neutral">Checking</span>
+            </div>
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M4 12.75h5.75V18.5H4v-5.75Zm1.5 1.5V17h2.75v-2.75H5.5ZM14.25 5.5H20v5.75h-5.75V5.5Zm1.5 1.5v2.75h2.75V7h-2.75ZM6.94 6.94l4.12 4.12-1.06 1.06-4.12-4.12 1.06-1.06Zm7 5.06h6.06v1.5h-6.06V12Zm-3.88 1.94 1.06 1.06-4.12 4.12-1.06-1.06 4.12-4.12Zm4.19 1.06 4.12-4.12 1.06 1.06-4.12 4.12-1.06-1.06Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Cluster</span>
+              </div>
+              <span id="status-cluster" class="status-badge is-neutral">Awaiting</span>
+            </div>
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M4 13h3.88l1.6-4.8L13.25 18l2.3-6H20v-1.5h-5.34l-1.53 4-3.68-9.68L6.8 11.5H4V13Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Signals</span>
+              </div>
+              <span id="status-signals" class="status-badge is-neutral">Awaiting</span>
+            </div>
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4H10v1.5H7.5a1 1 0 0 0 0 2H14a2.5 2.5 0 1 1 0 5H10a1 1 0 0 0 0 2H16.5a1 1 0 0 0 0-2H14V11h2.5a2.5 2.5 0 1 1 0 5H10a2.5 2.5 0 1 1 0-5h4a1 1 0 0 0 0-2H7.5A2.5 2.5 0 0 1 5 6.5Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Mode</span>
+              </div>
+              <span id="status-mode" class="status-badge is-info">Detecting</span>
+            </div>
+          </div>
+          <div class="status-wallet">
+            <p class="wallet-label">Connected Wallet</p>
+            <code id="status-wallet">--</code>
+          </div>
+        </section>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="dashboard-header">
+          <div class="header-copy">
+            <p class="header-kicker">Canonical App</p>
+            <h1>Oak Ops</h1>
+          </div>
+          <div class="header-meta">
+            <div class="header-pill">
+              <span class="pill-label">API Base</span>
+              <strong id="runtime-base">--</strong>
+            </div>
+            <div class="header-pill">
+              <span class="pill-label">Last Sync</span>
+              <strong id="last-updated">Loading…</strong>
+            </div>
+            <button id="refresh-btn" class="btn btn-primary" type="button">Refresh</button>
+          </div>
+        </header>
+
+        <div class="dashboard-content ops-content">
+          <section class="ops-intro-card">
+            <div class="ops-intro-copy">
+              <p class="card-kicker">Operator Control Plane</p>
+              <h2>The Fifth Element in Operator Form</h2>
+              <p class="card-body">
+                Oak Ops is the adaptive control plane for the global P2P Oak repository. Release flow remains canonical; epoch data stays informational. Use the panels below to move from the high-level operator read model into release stages, signals, config drift, GC posture, and raw debug surfaces.
+              </p>
+            </div>
+            <div class="ops-intro-actions">
+              <a class="btn btn-secondary" href="/docs/ops-api-contract-v1.md">Read Ops Contract</a>
+            </div>
+          </section>
+
+          <nav class="panel-nav" aria-label="Oak ops panels" role="tablist">
+            <button id="tab-overview" class="panel-tab is-active" type="button" data-panel="overview" role="tab" aria-selected="true" aria-controls="panel-overview">Overview</button>
+            <button id="tab-release" class="panel-tab" type="button" data-panel="release" role="tab" aria-selected="false" aria-controls="panel-release" tabindex="-1">Release Flow</button>
+            <button id="tab-signals" class="panel-tab" type="button" data-panel="signals" role="tab" aria-selected="false" aria-controls="panel-signals" tabindex="-1">Signals</button>
+            <button id="tab-config" class="panel-tab" type="button" data-panel="config" role="tab" aria-selected="false" aria-controls="panel-config" tabindex="-1">Config</button>
+            <button id="tab-gc" class="panel-tab" type="button" data-panel="gc" role="tab" aria-selected="false" aria-controls="panel-gc" tabindex="-1">GC</button>
+            <button id="tab-debug" class="panel-tab" type="button" data-panel="debug" role="tab" aria-selected="false" aria-controls="panel-debug" tabindex="-1">Debug</button>
+          </nav>
+
+          <section class="hero-grid">
+            <article class="hero-card">
+              <p class="hero-label">Cluster</p>
+              <p id="cluster-state" class="hero-value">--</p>
+              <p class="hero-description">Observed validator-cluster posture for the current Raft term.</p>
+              <p id="cluster-detail" class="hero-detail">Awaiting sample</p>
+            </article>
+            <article class="hero-card">
+              <p class="hero-label">Governor</p>
+              <p id="governor-state" class="hero-value">--</p>
+              <p class="hero-description">Adaptive release controller state deciding whether work flows directly or holds.</p>
+              <p id="governor-detail" class="hero-detail">Awaiting sample</p>
+            </article>
+            <article class="hero-card">
+              <p class="hero-label">Signals</p>
+              <p id="signal-status" class="hero-value">--</p>
+              <p class="hero-description">Aggregated operator health across runtime counters, queue pressure, and telemetry gaps.</p>
+              <p id="signal-detail" class="hero-detail">Awaiting sample</p>
+            </article>
+            <article class="hero-card">
+              <p class="hero-label">Release Mode</p>
+              <p id="release-mode" class="hero-value">--</p>
+              <p class="hero-description">Runtime release strategy and finality policy currently active on this node.</p>
+              <p id="release-detail" class="hero-detail">Awaiting sample</p>
+            </article>
+          </section>
+
+          <section id="panel-overview" class="panel-section is-active" role="tabpanel" aria-labelledby="tab-overview">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Panel</p>
+                <h2>Overview</h2>
+              </div>
+              <p class="section-meta">Live operator summary across cluster, queue, and release posture.</p>
+            </div>
+            <div id="overview-grid" class="metric-grid"></div>
+          </section>
+
+          <section id="panel-release" class="panel-section" role="tabpanel" aria-labelledby="tab-release" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Canonical</p>
+                <h2>Adaptive Release Flow</h2>
+              </div>
+              <p class="section-meta">Sourced from <code>/ops/v1/proposals/release-flow</code></p>
+            </div>
+            <div id="release-stage-grid" class="stage-grid"></div>
+            <div id="release-summary" class="summary-grid"></div>
+            <p id="release-note" class="section-note">Awaiting release-flow sample.</p>
+          </section>
+
+          <section id="panel-signals" class="panel-section" role="tabpanel" aria-labelledby="tab-signals" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Health Model</p>
+                <h2>Signals</h2>
+              </div>
+              <p class="section-meta">Prioritized operator signals and telemetry gaps</p>
+            </div>
+            <div id="signals-summary" class="metric-grid"></div>
+            <div id="signals-grid" class="signal-grid"></div>
+          </section>
+
+          <section id="panel-config" class="panel-section" role="tabpanel" aria-labelledby="tab-config" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Tuning</p>
+                <h2>Config Drift</h2>
+              </div>
+              <p class="section-meta">Runtime-readable deltas versus defaults</p>
+            </div>
+            <div id="config-summary" class="metric-grid"></div>
+            <div id="config-changes" class="stack-list"></div>
+          </section>
+
+          <section id="panel-gc" class="panel-section" role="tabpanel" aria-labelledby="tab-gc" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Storage</p>
+                <h2>GC and Compaction</h2>
+              </div>
+              <p class="section-meta">Debt, reclaimable footprint, and compaction readiness</p>
+            </div>
+            <div id="gc-grid" class="metric-grid"></div>
+          </section>
+
+          <section id="panel-debug" class="panel-section" role="tabpanel" aria-labelledby="tab-debug" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Engineering</p>
+                <h2>Debug Surfaces</h2>
+              </div>
+              <p class="section-meta">Raw queue stats remain available here, not as the primary operator view.</p>
+            </div>
+            <div class="debug-grid">
+              <article class="debug-card">
+                <h3>Queue Stats</h3>
+                <pre id="debug-queue">Awaiting sample.</pre>
+              </article>
+              <article class="debug-card">
+                <h3>Release Flow</h3>
+                <pre id="debug-release">Awaiting sample.</pre>
+              </article>
+              <article class="debug-card">
+                <h3>Signals</h3>
+                <pre id="debug-signals">Awaiting sample.</pre>
+              </article>
+            </div>
+          </section>
         </div>
-      </header>
-
-      <nav class="panel-nav" aria-label="Oak ops panels">
-        <button class="panel-tab is-active" type="button" data-panel="overview">Overview</button>
-        <button class="panel-tab" type="button" data-panel="release">Release Flow</button>
-        <button class="panel-tab" type="button" data-panel="signals">Signals</button>
-        <button class="panel-tab" type="button" data-panel="config">Config</button>
-        <button class="panel-tab" type="button" data-panel="gc">GC</button>
-        <button class="panel-tab" type="button" data-panel="debug">Debug</button>
-      </nav>
-
-      <main class="app-main">
-        <section class="hero-grid">
-          <article class="hero-card">
-            <p class="hero-label">Cluster</p>
-            <p id="cluster-state" class="hero-value">--</p>
-            <p id="cluster-detail" class="hero-detail">Awaiting sample</p>
-          </article>
-          <article class="hero-card">
-            <p class="hero-label">Governor</p>
-            <p id="governor-state" class="hero-value">--</p>
-            <p id="governor-detail" class="hero-detail">Awaiting sample</p>
-          </article>
-          <article class="hero-card">
-            <p class="hero-label">Signals</p>
-            <p id="signal-status" class="hero-value">--</p>
-            <p id="signal-detail" class="hero-detail">Awaiting sample</p>
-          </article>
-          <article class="hero-card">
-            <p class="hero-label">Release Mode</p>
-            <p id="release-mode" class="hero-value">--</p>
-            <p id="release-detail" class="hero-detail">Awaiting sample</p>
-          </article>
-        </section>
-
-        <section id="panel-overview" class="panel-section is-active">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Panel</p>
-              <h2>Overview</h2>
-            </div>
-            <p id="last-updated" class="section-meta">Updated --</p>
-          </div>
-          <div id="overview-grid" class="metric-grid"></div>
-        </section>
-
-        <section id="panel-release" class="panel-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Canonical</p>
-              <h2>Adaptive Release Flow</h2>
-            </div>
-            <p class="section-meta">Sourced from <code>/ops/v1/proposals/release-flow</code></p>
-          </div>
-          <div id="release-stage-grid" class="stage-grid"></div>
-          <div id="release-summary" class="summary-grid"></div>
-          <p id="release-note" class="section-note">Awaiting release-flow sample.</p>
-        </section>
-
-        <section id="panel-signals" class="panel-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Health Model</p>
-              <h2>Signals</h2>
-            </div>
-            <p class="section-meta">Prioritized operator signals and telemetry gaps</p>
-          </div>
-          <div id="signals-summary" class="metric-grid"></div>
-          <div id="signals-grid" class="signal-grid"></div>
-        </section>
-
-        <section id="panel-config" class="panel-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Tuning</p>
-              <h2>Config Drift</h2>
-            </div>
-            <p class="section-meta">Runtime-readable deltas versus defaults</p>
-          </div>
-          <div id="config-summary" class="metric-grid"></div>
-          <div id="config-changes" class="stack-list"></div>
-        </section>
-
-        <section id="panel-gc" class="panel-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Storage</p>
-              <h2>GC and Compaction</h2>
-            </div>
-            <p class="section-meta">Debt, reclaimable footprint, and compaction readiness</p>
-          </div>
-          <div id="gc-grid" class="metric-grid"></div>
-        </section>
-
-        <section id="panel-debug" class="panel-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Engineering</p>
-              <h2>Debug Surfaces</h2>
-            </div>
-            <p class="section-meta">Raw queue stats remain available here, not as the primary operator view.</p>
-          </div>
-          <div class="debug-grid">
-            <article class="debug-card">
-              <h3>Queue Stats</h3>
-              <pre id="debug-queue">Awaiting sample.</pre>
-            </article>
-            <article class="debug-card">
-              <h3>Release Flow</h3>
-              <pre id="debug-release">Awaiting sample.</pre>
-            </article>
-            <article class="debug-card">
-              <h3>Signals</h3>
-              <pre id="debug-signals">Awaiting sample.</pre>
-            </article>
-          </div>
-        </section>
       </main>
     </div>
   </body>

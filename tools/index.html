@@ -1,87 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Blockchain AEM | The Fifth Element of AEM</title>
+    <title>Blockchain AEM | Tools Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Blockchain AEM is the fifth element of AEM. Browse Oak Ops and the tools behind the global P2P Oak repository."
+      content="Blockchain AEM tools dashboard for Oak Ops, operator contracts, and the fifth-element control-plane surfaces."
     />
     <base href="/tools/" />
+    <link rel="stylesheet" href="/tools/shell.css" />
     <link rel="stylesheet" href="/tools/index.css" />
+    <script src="/tools/index.js" type="module"></script>
   </head>
   <body>
-    <div class="catalog-shell">
-      <header class="catalog-hero">
-        <p class="eyebrow">Blockchain AEM</p>
-        <h1>The Fifth Element of AEM</h1>
-        <p class="subtitle">
-          From on-prem to managed services, cloud, and edge, AEM keeps evolving. Blockchain AEM adds a fifth element: a global P2P Oak repository with durable, verifiable content state.
-        </p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="/tools/ops/ops.html">Open Oak Ops</a>
-          <a class="btn btn-secondary" href="/">Repository Home</a>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation">
+              <path d="M7 8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V10h1.5A1.5 1.5 0 0 1 20 11.5v6A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-6A1.5 1.5 0 0 1 5.5 10H7V8.5Zm2.5-1a1 1 0 0 0-1 1V10h7V8.5a1 1 0 0 0-1-1h-5Zm-4 4v6A1 1 0 0 0 6.5 18h11a1 1 0 0 0 1-1v-6h-13Z" />
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <p class="brand-title">Blockchain <span>AEM</span></p>
+            <p class="brand-subtitle">Global P2P Oak Repository</p>
+          </div>
         </div>
-      </header>
 
-      <main class="catalog-main">
-        <section class="catalog-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Primary</p>
-              <h2>Operator Apps</h2>
+        <nav class="sidebar-nav" aria-label="Tools dashboard navigation">
+          <p class="nav-label">Menu</p>
+          <a class="nav-item" href="/tools/index.html" data-nav="home">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6ZM5.5 5.5v3h3v-3h-3Zm10 0v3h3v-3h-3Zm-10 10v3h3v-3h-3Zm10 0v3h3v-3h-3Z" />
+              </svg>
+            </span>
+            Dashboard
+          </a>
+          <a class="nav-item" href="/tools/ops/ops.html" data-nav="ops">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Zm0 1.8 5.97 2.99L12 10.78 6.03 7.79 12 4.8Zm-6.5 4.2 5.75 2.88v7.32L5.5 16.32V9Zm7.25 10.2v-7.32L18.5 9v7.32l-5.75 2.88Z" />
+              </svg>
+            </span>
+            Oak Ops
+          </a>
+          <a class="nav-item" href="/docs/ops-api-contract-v1.md" data-nav="contract">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M6 4.5A2.5 2.5 0 0 1 8.5 2H18v18h-9.5A2.5 2.5 0 0 0 6 22V4.5Zm10.5-.5h-8A1 1 0 0 0 7.5 5v13.59c.3-.12.65-.19 1-.19h8V4ZM9 7h6v1.5H9V7Zm0 3h6v1.5H9V10Zm0 3h4.5v1.5H9V13Z" />
+              </svg>
+            </span>
+            Ops Contract
+          </a>
+          <a class="nav-item" href="https://www.aem.live/docs/integrations" data-nav="integrations">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="presentation">
+                <path d="M7 4h10a3 3 0 0 1 3 3v4.5h-1.5V7A1.5 1.5 0 0 0 17 5.5H7A1.5 1.5 0 0 0 5.5 7v10A1.5 1.5 0 0 0 7 18.5h4.5V20H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm7 9h6v2h-1.5v-1h-3v5h1v1.5h-3V19h.5v-5H14v-1Z" />
+              </svg>
+            </span>
+            EDS Integrations
+          </a>
+        </nav>
+
+        <section class="status-panel" aria-labelledby="system-status-title">
+          <div class="panel-heading">
+            <p id="system-status-title" class="nav-label">System Status</p>
+            <span id="status-dot" class="status-dot is-neutral" aria-hidden="true"></span>
+          </div>
+          <div class="status-list">
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M12 3 5 6v5c0 4.42 2.99 8.55 7 9.72 4.01-1.17 7-5.3 7-9.72V6l-7-3Zm0 1.64 5.5 2.35V11c0 3.65-2.35 7.13-5.5 8.21C8.85 18.13 6.5 14.65 6.5 11V6.99L12 4.64Zm-2.75 4.11h5.5v1.5h-5.5v-1.5Zm0 3h5.5v1.5h-5.5v-1.5Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Validator 0</span>
+              </div>
+              <span id="status-validator" class="status-badge is-neutral">Checking</span>
+            </div>
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M4 12.75h5.75V18.5H4v-5.75Zm1.5 1.5V17h2.75v-2.75H5.5ZM14.25 5.5H20v5.75h-5.75V5.5Zm1.5 1.5v2.75h2.75V7h-2.75ZM6.94 6.94l4.12 4.12-1.06 1.06-4.12-4.12 1.06-1.06Zm7 5.06h6.06v1.5h-6.06V12Zm-3.88 1.94 1.06 1.06-4.12 4.12-1.06-1.06 4.12-4.12Zm4.19 1.06 4.12-4.12 1.06 1.06-4.12 4.12-1.06-1.06Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Cluster</span>
+              </div>
+              <span id="status-cluster" class="status-badge is-neutral">Awaiting</span>
+            </div>
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M4 13h3.88l1.6-4.8L13.25 18l2.3-6H20v-1.5h-5.34l-1.53 4-3.68-9.68L6.8 11.5H4V13Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Signals</span>
+              </div>
+              <span id="status-signals" class="status-badge is-neutral">Awaiting</span>
+            </div>
+            <div class="status-row">
+              <div class="status-label-wrap">
+                <span class="status-row-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="presentation">
+                    <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4H10v1.5H7.5a1 1 0 0 0 0 2H14a2.5 2.5 0 1 1 0 5H10a1 1 0 0 0 0 2H16.5a1 1 0 0 0 0-2H14V11h2.5a2.5 2.5 0 1 1 0 5H10a2.5 2.5 0 1 1 0-5h4a1 1 0 0 0 0-2H7.5A2.5 2.5 0 0 1 5 6.5Z" />
+                  </svg>
+                </span>
+                <span class="status-label">Mode</span>
+              </div>
+              <span id="status-mode" class="status-badge is-info">Detecting</span>
             </div>
           </div>
-          <div class="tool-grid">
-            <article class="tool-card is-primary">
-              <p class="tool-kicker">Fifth-element control plane</p>
-              <h3>Oak Ops</h3>
-              <p>
-                Canonical operator app for adaptive release flow, validator-aware signals, config drift, GC posture, and raw runtime inspection.
+          <div class="status-wallet">
+            <p class="wallet-label">Connected Wallet</p>
+            <code id="status-wallet">--</code>
+          </div>
+        </section>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="dashboard-header">
+          <div class="header-copy">
+            <p class="header-kicker">Tools Home</p>
+            <h1>Overview</h1>
+          </div>
+          <div class="header-meta">
+            <div class="header-pill">
+              <span class="pill-label">API Base</span>
+              <strong id="runtime-base">--</strong>
+            </div>
+            <div class="header-pill">
+              <span class="pill-label">Last Sync</span>
+              <strong id="last-updated">Loading…</strong>
+            </div>
+          </div>
+        </header>
+
+        <div class="dashboard-content">
+          <section class="hero-grid">
+            <article class="hero-card hero-card--story">
+              <div class="card-copy">
+                <p class="card-kicker">Blockchain AEM</p>
+                <h2>The Fifth Element of AEM</h2>
+                <p class="card-body">
+                  From on-prem to managed services, cloud, and edge, AEM keeps evolving. Blockchain AEM adds a fifth element: a blockchain-anchored global P2P Oak repository for durable, verifiable content state.
+                </p>
+              </div>
+            </article>
+
+            <article class="hero-card hero-card--ops">
+              <div class="card-copy">
+                <p class="card-kicker">Canonical App</p>
+                <h2>Oak Ops</h2>
+                <p class="card-body">
+                  Operator app for adaptive release flow, governor state, signals, config drift, GC posture, and raw debug surfaces in one standalone control plane.
+                </p>
+              </div>
+              <div class="hero-actions">
+                <a class="btn btn-primary" href="/tools/ops/ops.html">Launch Oak Ops</a>
+                <a class="btn btn-secondary" href="/docs/ops-api-contract-v1.md">Read Ops Contract</a>
+              </div>
+            </article>
+          </section>
+
+          <section class="feature-grid" aria-label="Dashboard cards">
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="presentation">
+                  <path d="M4.8 18.14 10.4 4.7a2 2 0 0 1 3.7 0l5.58 13.44-1.38.58-1.52-3.67H7.7l-1.52 3.67-1.38-.58Zm3.52-4.75h7.36L12 4.46l-3.68 8.93Z" />
+                </svg>
+              </div>
+              <p class="card-kicker">Primary</p>
+              <h3>Tool Catalogue</h3>
+              <p class="card-body">
+                Access the operator surfaces, reference contracts, and supporting docs that define the Blockchain AEM tooling envelope.
               </p>
-              <ul>
-                <li>Canonical `release-flow` model</li>
-                <li>Signal-first health view</li>
-                <li>Debug access to raw queue stats</li>
-              </ul>
-              <div class="tool-actions">
-                <a class="btn btn-primary" href="/tools/ops/ops.html">Launch</a>
-              </div>
+              <a class="text-link" href="/tools/index.html">Explore Tools</a>
             </article>
-          </div>
-        </section>
 
-        <section class="catalog-section">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Contracts</p>
-              <h2>Reference Surfaces</h2>
-            </div>
-          </div>
-          <div class="tool-grid">
-            <article class="tool-card">
-              <p class="tool-kicker">API</p>
-              <h3>Ops Contract</h3>
-              <p>Operator contract for the edge adapter and the app surfaces it feeds.</p>
-              <div class="tool-actions">
-                <a class="btn btn-secondary" href="/docs/ops-api-contract-v1.md">Open</a>
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="presentation">
+                  <path d="M12 3.5 19 7v10l-7 3.5L5 17V7l7-3.5Zm0 1.68L6.5 7.93v8.14l5.5 2.75 5.5-2.75V7.93L12 5.18Zm-2.5 3.57h5v1.5h-5v-1.5Zm0 3h5v1.5h-5v-1.5Zm0 3h5v1.5h-5v-1.5Z" />
+                </svg>
               </div>
+              <p class="card-kicker">AEM Evolution</p>
+              <h3>Fifth Element</h3>
+              <p class="card-body">
+                Trace how Oak Ops extends AEM’s arc with validator-aware release control, durable state propagation, and verifiable repository posture.
+              </p>
+              <a class="text-link" href="/tools/ops/ops.html#overview">View Metrics</a>
             </article>
-            <article class="tool-card">
-              <p class="tool-kicker">Backend</p>
-              <h3>Adaptive Scheduler</h3>
-              <p>Backend release-flow and control-plane live in `oak-segment-consensus`; the fifth element stays credible only if those contracts remain aligned first.</p>
-            </article>
-            <article class="tool-card">
-              <p class="tool-kicker">Platform</p>
-              <h3>EDS Integrations</h3>
-              <p>Reference documentation for the Edge Delivery and DA patterns behind this tools-first operator surface.</p>
-              <div class="tool-actions">
-                <a class="btn btn-secondary" href="https://www.aem.live/docs/integrations">Open</a>
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="presentation">
+                  <path d="M5 4h6v6H5V4Zm8 0h6v6h-6V4ZM5 12h6v8H5v-8Zm8 4h2.5v-4H13v4Zm4 0H19v-4h-2v4Zm-4 1.5v2h6v-2h-6Z" />
+                </svg>
               </div>
+              <p class="card-kicker">Source of Truth</p>
+              <h3>Control Plane</h3>
+              <p class="card-body">
+                Keep the UX grounded in the real operator contract: the edge adapter stays a read model over the canonical release-flow and runtime endpoints.
+              </p>
+              <a class="text-link" href="/docs/ops-api-contract-v1.md">Read Contract</a>
             </article>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </div>
   </body>
