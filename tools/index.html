@@ -190,12 +190,45 @@
             </article>
 
             <article class="hero-card hero-card--ops">
-              <div class="card-copy">
-                <p class="card-kicker">Canonical App</p>
-                <h2>Oak Ops</h2>
-                <p class="card-body">
-                  Operator app for adaptive release flow, governor state, signals, config drift, GC posture, and raw debug surfaces in one standalone control plane.
-                </p>
+              <div class="hero-ops-layout">
+                <div class="card-copy">
+                  <p class="card-kicker">Canonical App</p>
+                  <h2>Oak Ops</h2>
+                  <p class="card-body">
+                    Operator app for adaptive release flow, governor state, signals, config drift, GC posture, and raw debug surfaces in one standalone control plane.
+                  </p>
+                </div>
+                <div class="ops-preview" aria-label="Oak Ops operator snapshot">
+                  <div class="ops-preview-header">
+                    <p class="ops-preview-kicker">Operator Snapshot</p>
+                    <span id="ops-preview-runtime" class="ops-preview-runtime">Awaiting runtime</span>
+                  </div>
+                  <div class="ops-preview-chip-row" aria-hidden="true">
+                    <span class="ops-preview-chip is-active">Overview</span>
+                    <span class="ops-preview-chip">Release</span>
+                    <span class="ops-preview-chip">Signals</span>
+                    <span class="ops-preview-chip">Config</span>
+                  </div>
+                  <div class="ops-preview-grid">
+                    <div class="ops-preview-cell" data-tone="neutral">
+                      <span class="ops-preview-label">Cluster</span>
+                      <strong id="ops-preview-cluster" class="ops-preview-value">Awaiting</strong>
+                    </div>
+                    <div class="ops-preview-cell" data-tone="neutral">
+                      <span class="ops-preview-label">Validator</span>
+                      <strong id="ops-preview-validator" class="ops-preview-value">Awaiting</strong>
+                    </div>
+                    <div class="ops-preview-cell" data-tone="neutral">
+                      <span class="ops-preview-label">Signals</span>
+                      <strong id="ops-preview-signals" class="ops-preview-value">Awaiting</strong>
+                    </div>
+                    <div class="ops-preview-cell" data-tone="neutral">
+                      <span class="ops-preview-label">Mode</span>
+                      <strong id="ops-preview-mode" class="ops-preview-value">Awaiting</strong>
+                    </div>
+                  </div>
+                  <p id="ops-preview-note" class="ops-preview-note">Mini readout of the operator surface that opens in Oak Ops.</p>
+                </div>
               </div>
               <div class="hero-actions">
                 <a class="btn btn-primary" href="/tools/ops/ops.html">Launch Oak Ops</a>
