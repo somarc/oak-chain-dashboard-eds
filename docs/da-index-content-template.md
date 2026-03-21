@@ -6,7 +6,7 @@ Use the existing DA `index` document as a thin landing surface that points into 
 
 | Tools Home | | | |
 | --- | --- | --- | --- |
-| hero | Blockchain AEM | The Fifth Element of AEM | From on-prem to managed services, cloud, and edge, AEM keeps evolving. Blockchain AEM adds a fifth element: a blockchain-anchored global P2P Oak repository for durable, verifiable content state. |
+| hero | Blockchain AEM | The Fifth Element of AEM | From on-prem to managed services, cloud, and edge, AEM keeps evolving. Blockchain AEM adds The Fifth Element. |
 | primary | Canonical App | Oak Ops | Operator app for adaptive release flow, governor state, signals, config drift, GC posture, and raw debug surfaces in one standalone control plane. [Launch Oak Ops](/tools/ops/ops.html) [Browse Catalogue](/tools/index.html) |
 | card | Primary | Tool Catalogue | Central entry for the operator apps, reference surfaces, and future tooling that grow around Blockchain AEM. [Open catalogue](/tools/index.html) |
 | card | AEM Evolution | Fifth Element | AEM moved from on-prem to managed services, cloud, and edge. Blockchain AEM extends that arc with shared, verifiable Oak state across validator-backed nodes. [Open Oak Ops](/tools/ops/ops.html) |

@@ -6,59 +6,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <script nonce="aem" src="/scripts/aem.js" type="module"></script>
 <script nonce="aem">
-  const isLocalOps = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const hostname = String(window.location.hostname || '').toLowerCase();
+  const isLocalOps = ['localhost', '127.0.0.1'].includes(hostname);
+  const isOakchainOps = hostname === 'oakchain.net' || hostname.endsWith('.oakchain.net');
+  const hostedWorkerEndpoints = {
+    explorerSummary: '/oak-chain-action?route=explorer/summary',
+    header: '/oak-chain-action?route=header',
+    overview: '/oak-chain-action?route=overview',
+    cluster: '/oak-chain-action?route=cluster',
+    raft: '/oak-chain-action?route=raft',
+    replication: '/oak-chain-action?route=replication',
+    queue: '/oak-chain-action?route=queue',
+    durability: '/oak-chain-action?route=durability',
+    health: '/oak-chain-action?route=health',
+    proposals: '/oak-chain-action?route=proposals',
+    explorerReleaseFlow: '/oak-chain-action?route=explorer/release-flow',
+    proposalsReleaseFlow: '/oak-chain-action?route=proposals/release-flow',
+    proposalsQueueStats: '/oak-chain-action?route=proposals/queue/stats',
+    signals: '/oak-chain-action?route=signals',
+    proposalsEpochs: '/oak-chain-action?route=proposals/epochs',
+    eventsRecent: '/oak-chain-action?route=events/recent',
+    eventsStats: '/oak-chain-action?route=events/stats',
+    finality: '/oak-chain-action?route=finality',
+    tarmk: '/oak-chain-action?route=tarmk',
+    tarChain: '/oak-chain-action?route=tar-chain',
+    configOsgi: '/oak-chain-action?route=config/osgi',
+    configOsgiSchema: '/oak-chain-action?route=config/osgi/schema',
+    configOsgiSources: '/oak-chain-action?route=config/osgi/sources',
+    configOsgiCoverage: '/oak-chain-action?route=config/osgi/coverage',
+    configOsgiDelta: '/oak-chain-action?route=config/osgi/delta',
+    gcStatus: '/oak-chain-action?route=gc/status',
+    gcEstimate: '/oak-chain-action?route=gc/estimate',
+    gcAccount: '/oak-chain-action?route=gc/account/{walletAddress}',
+    compactionProposals: '/oak-chain-action?route=compaction/proposals',
+    fragmentationMetrics: '/oak-chain-action?route=fragmentation/metrics',
+  };
+  const pollingRefreshSeconds = {
+    header: 30,
+    metrics: 30,
+    feed: 30,
+    proposals: 30,
+    signals: 30,
+    raftCluster: 30,
+    finality: 30,
+    queueStats: 30,
+    tarmk: 30,
+    tarChain: 30,
+    configTuning: 30,
+    gcStatus: 30,
+  };
   window.OAK_OPS_RUNTIME_CONFIG = {
     apiBase: isLocalOps
       ? 'http://127.0.0.1:8787'
-      : 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker',
-    endpoints: isLocalOps
+      : isOakchainOps
+        ? 'https://ops.oakchain.net'
+        : 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker',
+    endpoints: isLocalOps || isOakchainOps
       ? undefined
-      : {
-        explorerSummary: '/oak-chain-action?route=explorer/summary',
-        header: '/oak-chain-action?route=header',
-        overview: '/oak-chain-action?route=overview',
-        cluster: '/oak-chain-action?route=cluster',
-        raft: '/oak-chain-action?route=raft',
-        replication: '/oak-chain-action?route=replication',
-        queue: '/oak-chain-action?route=queue',
-        durability: '/oak-chain-action?route=durability',
-        health: '/oak-chain-action?route=health',
-        proposals: '/oak-chain-action?route=proposals',
-        explorerReleaseFlow: '/oak-chain-action?route=explorer/release-flow',
-        proposalsReleaseFlow: '/oak-chain-action?route=proposals/release-flow',
-        proposalsQueueStats: '/oak-chain-action?route=proposals/queue/stats',
-        signals: '/oak-chain-action?route=signals',
-        proposalsEpochs: '/oak-chain-action?route=proposals/epochs',
-        eventsRecent: '/oak-chain-action?route=events/recent',
-        eventsStats: '/oak-chain-action?route=events/stats',
-        finality: '/oak-chain-action?route=finality',
-        tarmk: '/oak-chain-action?route=tarmk',
-        tarChain: '/oak-chain-action?route=tar-chain',
-        configOsgi: '/oak-chain-action?route=config/osgi',
-        configOsgiSchema: '/oak-chain-action?route=config/osgi/schema',
-        configOsgiSources: '/oak-chain-action?route=config/osgi/sources',
-        configOsgiCoverage: '/oak-chain-action?route=config/osgi/coverage',
-        configOsgiDelta: '/oak-chain-action?route=config/osgi/delta',
-        gcStatus: '/oak-chain-action?route=gc/status',
-        gcEstimate: '/oak-chain-action?route=gc/estimate',
-        gcAccount: '/oak-chain-action?route=gc/account/{walletAddress}',
-        compactionProposals: '/oak-chain-action?route=compaction/proposals',
-        fragmentationMetrics: '/oak-chain-action?route=fragmentation/metrics',
-      },
-    refreshSeconds: {
-      header: 30,
-      metrics: 30,
-      feed: 30,
-      proposals: 30,
-      signals: 30,
-      raftCluster: 30,
-      finality: 30,
-      queueStats: 30,
-      tarmk: 30,
-      tarChain: 30,
-      configTuning: 30,
-      gcStatus: 30,
-    },
+      : hostedWorkerEndpoints,
+    refreshSeconds: isLocalOps ? undefined : pollingRefreshSeconds,
   };
 </script>
 <script nonce="aem" src="/scripts/scripts.js" type="module"></script>
