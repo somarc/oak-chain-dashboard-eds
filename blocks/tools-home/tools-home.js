@@ -99,6 +99,20 @@ const ATMOSPHERE_LINKS = [
   { x: 68, y: 74, width: 18, angle: -9, opacity: 0.12 },
 ];
 
+const AEM_EVOLUTION_STEPS = [
+  { index: '(1)', label: 'On-Prem' },
+  { index: '(2)', label: 'Managed Services' },
+  { index: '(3)', label: 'AEMaaCS' },
+  { index: '(4)', label: 'AEM Edge Delivery' },
+];
+
+const PRIMARY_HIGHLIGHTS = [
+  'Adaptive release flow',
+  'Validator truth',
+  'Signals and drift',
+  'GC posture',
+];
+
 function buildAtmosphere() {
   const layer = document.createElement('div');
   layer.className = 'tools-home-atmosphere';
@@ -142,10 +156,85 @@ function buildAtmosphere() {
   return layer;
 }
 
+function buildEvolutionTrack() {
+  const track = document.createElement('div');
+  track.className = 'tools-home-hero-track';
+  track.setAttribute('aria-label', 'AEM evolution track');
+
+  const label = document.createElement('p');
+  label.className = 'tools-home-hero-track-label';
+  label.textContent = 'AEM Evolution';
+  track.append(label);
+
+  const list = document.createElement('div');
+  list.className = 'tools-home-hero-track-list';
+  list.setAttribute('role', 'list');
+
+  AEM_EVOLUTION_STEPS.forEach((step) => {
+    const item = document.createElement('div');
+    item.className = 'tools-home-hero-step';
+    item.setAttribute('role', 'listitem');
+    item.innerHTML = `
+      <span class="tools-home-hero-step-index">${step.index}</span>
+      <span class="tools-home-hero-step-label">${step.label}</span>
+    `;
+    list.append(item);
+  });
+
+  track.append(list);
+
+  const fifth = document.createElement('div');
+  fifth.className = 'tools-home-hero-fifth';
+  fifth.innerHTML = `
+    <span class="tools-home-hero-step-index">(5)</span>
+    <div class="tools-home-hero-fifth-copy">
+      <p class="tools-home-hero-fifth-title">Blockchain AEM</p>
+      <p class="tools-home-hero-fifth-body">The canonical shared Oak state layer that makes AEM durable, global, and verifiable.</p>
+    </div>
+  `;
+  track.append(fifth);
+
+  return track;
+}
+
+function buildPrimaryPreview() {
+  const preview = document.createElement('div');
+  preview.className = 'tools-home-primary-preview';
+  preview.innerHTML = `
+    <p class="tools-home-primary-preview-kicker">Inside Oak Ops</p>
+    <div class="tools-home-primary-preview-grid">
+      ${PRIMARY_HIGHLIGHTS.map((item) => `
+        <span class="tools-home-primary-pill">${item}</span>
+      `).join('')}
+    </div>
+    <p class="tools-home-primary-preview-note">The authored landing page introduces the platform. The real operator surfaces live under <code>/tools</code>.</p>
+  `;
+  return preview;
+}
+
+function buildCardIcon(kicker) {
+  const icon = document.createElement('div');
+  icon.className = 'tools-home-card-icon';
+  const tone = kicker.toLowerCase();
+  if (tone.includes('evolution')) {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" role="presentation"><path d="M12 3.5 19 7v10l-7 3.5L5 17V7l7-3.5Zm0 1.68L6.5 7.93v8.14l5.5 2.75 5.5-2.75V7.93L12 5.18Z"></path></svg>';
+  } else if (tone.includes('truth') || tone.includes('control')) {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" role="presentation"><path d="M5 4h6v6H5V4Zm8 0h6v6h-6V4ZM5 12h6v8H5v-8Zm8 4h2.5v-4H13v4Zm4 0H19v-4h-2v4Zm-4 1.5v2h6v-2h-6Z"></path></svg>';
+  } else {
+    icon.innerHTML = '<svg viewBox="0 0 24 24" role="presentation"><path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z"></path></svg>';
+  }
+  return icon;
+}
+
 function buildHero(row) {
   const [, eyebrowCell, titleCell, bodyCell] = getRowCells(row);
   const section = document.createElement('section');
   section.className = 'tools-home-hero';
+  const layout = document.createElement('div');
+  layout.className = 'tools-home-hero-layout';
+
+  const copy = document.createElement('div');
+  copy.className = 'tools-home-hero-copy';
 
   const eyebrow = getText(eyebrowCell);
   const title = getText(titleCell);
@@ -155,16 +244,18 @@ function buildHero(row) {
     const kicker = document.createElement('p');
     kicker.className = 'tools-home-eyebrow';
     kicker.textContent = eyebrow;
-    section.append(kicker);
+    copy.append(kicker);
   }
 
   if (title) {
     const heading = document.createElement('h1');
     heading.textContent = title;
-    section.append(heading);
+    copy.append(heading);
   }
 
-  appendRichText(section, bodyHtml, 'tools-home-subtitle');
+  appendRichText(copy, bodyHtml, 'tools-home-subtitle');
+  layout.append(copy, buildEvolutionTrack());
+  section.append(layout);
   return section;
 }
 
@@ -197,6 +288,7 @@ function buildPrimary(row) {
   appendRichText(copy, bodyHtml, 'tools-home-body');
 
   section.append(copy);
+  section.append(buildPrimaryPreview());
 
   const actions = buildLinkList(links, 'tools-home-primary-actions');
   if (actions) {
@@ -215,6 +307,7 @@ function buildCard(row) {
   const title = getText(titleCell);
   const bodyHtml = cloneContentWithoutLinks(bodyCell);
   const links = collectLinks(bodyCell);
+  article.append(buildCardIcon(kicker || title || 'card'));
 
   if (kicker) {
     const label = document.createElement('p');
