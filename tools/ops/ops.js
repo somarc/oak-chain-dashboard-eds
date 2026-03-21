@@ -200,8 +200,8 @@ function renderReleaseFlow(releaseFlow) {
 
   summaryGrid.replaceChildren(
     createMetricCard('Governor', `${releaseFlow?.governor?.state || 'unknown'} / ${releaseFlow?.governor?.action || 'n/a'}`, `reasons=${(releaseFlow?.governor?.reasonCodes || []).join(', ') || 'none'}`, 'neutral', 'Decision state of the adaptive controller throttling or advancing release flow.'),
-    createMetricCard('Throughput', formatNumber(releaseFlow?.throughput?.totalProposalsSent || 0), `finalized=${formatNumber(releaseFlow?.throughput?.totalFinalizedCount || 0)} • rejected=${formatNumber(releaseFlow?.throughput?.totalRejectedCount || 0)}`, 'neutral', 'Cumulative proposals processed through the release pipeline over time.'),
-    createMetricCard('Packing', formatNumber(releaseFlow?.packing?.queuedProposalCountTotal || 0), `drained=${formatNumber(releaseFlow?.packing?.drainedProposalCountTotal || 0)} • batches=${formatNumber(releaseFlow?.packing?.createdBatchCountTotal || 0)}`, 'neutral', 'Lifetime work handled by the packer before proposals become release-ready.'),
+    createMetricCard('Release Sends', formatNumber(releaseFlow?.throughput?.totalProposalsSent || 0), `batched=${formatNumber(releaseFlow?.throughput?.batchedProposalsSent || 0)} • priority=${formatNumber(releaseFlow?.throughput?.priorityProposalsSent || 0)}`, 'neutral', 'Lifetime proposals emitted by the release system across both batched and direct-priority paths.'),
+    createMetricCard('Packer Input', formatNumber(releaseFlow?.packing?.queuedProposalCountTotal || 0), `drained=${formatNumber(releaseFlow?.packing?.drainedProposalCountTotal || 0)} • batches=${formatNumber(releaseFlow?.packing?.createdBatchCountTotal || 0)}`, 'neutral', 'Lifetime proposals that entered adaptive packing before becoming release-ready batches.'),
     createMetricCard('Overflow', formatNumber(releaseFlow?.overflow?.bufferedProposalCountTotal || 0), `promoted=${formatNumber(releaseFlow?.overflow?.promotedProposalCountTotal || 0)} • separate=${formatBoolean(releaseFlow?.overflow?.separateBufferEnabled)}`, 'neutral', 'Lifetime spillover handled by the overflow buffer when backpressure engages.'),
   );
 
