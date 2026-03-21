@@ -164,6 +164,7 @@
 
           <nav class="panel-nav" aria-label="Oak ops panels" role="tablist">
             <button id="tab-overview" class="panel-tab is-active" type="button" data-panel="overview" role="tab" aria-selected="true" aria-controls="panel-overview">Overview</button>
+            <button id="tab-cluster" class="panel-tab" type="button" data-panel="cluster" role="tab" aria-selected="false" aria-controls="panel-cluster" tabindex="-1">Cluster</button>
             <button id="tab-release" class="panel-tab" type="button" data-panel="release" role="tab" aria-selected="false" aria-controls="panel-release" tabindex="-1">Release Flow</button>
             <button id="tab-signals" class="panel-tab" type="button" data-panel="signals" role="tab" aria-selected="false" aria-controls="panel-signals" tabindex="-1">Signals</button>
             <button id="tab-config" class="panel-tab" type="button" data-panel="config" role="tab" aria-selected="false" aria-controls="panel-config" tabindex="-1">Config</button>
@@ -207,6 +208,19 @@
               <p class="section-meta">Live operator summary across cluster, queue, and release posture.</p>
             </div>
             <div id="overview-grid" class="metric-grid"></div>
+          </section>
+
+          <section id="panel-cluster" class="panel-section" role="tabpanel" aria-labelledby="tab-cluster" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Validator Truth</p>
+                <h2>Cluster and Validators</h2>
+              </div>
+              <p class="section-meta">Authoritative topology, reachability, and node readiness from <code>/ops/v1/cluster</code></p>
+            </div>
+            <div id="cluster-summary" class="summary-grid"></div>
+            <div id="validator-grid" class="validator-grid"></div>
+            <p id="cluster-note" class="section-note">Awaiting cluster sample.</p>
           </section>
 
           <section id="panel-release" class="panel-section" role="tabpanel" aria-labelledby="tab-release" hidden>

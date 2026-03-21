@@ -5,7 +5,7 @@ import {
   renderShellStatus,
 } from '/tools/shell.js';
 
-const PANELS = ['overview', 'release', 'signals', 'config', 'gc', 'debug'];
+const PANELS = ['overview', 'cluster', 'release', 'signals', 'config', 'gc', 'debug'];
 const app = {
   panel: 'overview',
   timer: null,
@@ -24,8 +24,29 @@ function formatBoolean(value) {
   return value === true ? 'yes' : 'no';
 }
 
+function formatStatus(value, fallback = 'unknown') {
+  return String(value || fallback).toUpperCase();
+}
+
 function formatJson(value) {
   return JSON.stringify(value, null, 2);
+}
+
+function formatTimestamp(value) {
+  if (!value) return '--';
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) return String(value);
+  return timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatNodeId(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? `Node ${parsed}` : 'Node --';
+}
+
+function isOperationalStatus(value) {
+  const normalized = String(value || '').toLowerCase();
+  return normalized === 'ready' || normalized === 'active' || normalized === 'healthy';
 }
 
 function signalTone(severity) {
@@ -94,6 +115,46 @@ function createSignalCard(signal) {
     <p class="signal-value">${signal.value === null ? 'unavailable' : `${signal.value}${signal.unit === 'count' ? '' : ` ${signal.unit || ''}`}`.trim()}</p>
     <p class="signal-detail">${signal.description || 'No description'}</p>
     <p class="signal-source">${signal.source || 'unknown source'}</p>
+  `;
+  return card;
+}
+
+function createValidatorCard(node, cluster) {
+  const card = document.createElement('article');
+  const isLeader = Number(node?.nodeId) === Number(cluster?.leaderNodeId);
+  const reachable = node?.reachable === true;
+  const status = String(node?.status || 'unknown').toUpperCase();
+  const tone = !reachable
+    ? 'unknown'
+    : isOperationalStatus(status)
+      ? 'ok'
+      : status === 'DEGRADED'
+        ? 'warn'
+        : 'neutral';
+  const reachabilityText = reachable ? 'reachable' : 'unreachable';
+  card.className = `validator-card is-${tone}`;
+  card.innerHTML = `
+    <div class="validator-head">
+      <div>
+        <p class="validator-node">${formatNodeId(node?.nodeId)}</p>
+        <p class="validator-wallet">${node?.wallet || '--'}</p>
+      </div>
+      <span class="validator-status is-${tone}">${status}</span>
+    </div>
+    <div class="validator-meta">
+      <span class="validator-chip ${isLeader ? 'is-leader' : ''}">${isLeader ? 'LEADER' : (node?.role || 'FOLLOWER')}</span>
+      <span class="validator-chip ${reachable ? 'is-reachable' : 'is-unreachable'}">${reachabilityText}</span>
+    </div>
+    <dl class="validator-facts">
+      <div>
+        <dt>Role</dt>
+        <dd>${node?.role || '--'}</dd>
+      </div>
+      <div>
+        <dt>Last Seen</dt>
+        <dd>${formatTimestamp(node?.lastSeenAt)}</dd>
+      </div>
+    </dl>
   `;
   return card;
 }
@@ -182,6 +243,40 @@ function renderOverview(summary, releaseFlow, signals, config, gc) {
     createMetricCard('Config Drift', formatNumber(config?.summary?.changedKeys || 0), `guarded=${config?.summary?.guardedChanged || 0} • expert=${config?.summary?.expertOnlyChanged || 0}`, 'neutral', 'Runtime-visible keys deviating from the shipped blockchain defaults.'),
     createMetricCard('GC Status', gc?.gcEnabled ? 'enabled' : 'disabled', `pending=${formatNumber(gc?.pendingProposals || 0)} • consensus=${formatBoolean(gc?.gcConsensusRequired)}`, 'neutral', 'Whether distributed garbage collection can run and how much GC work is still queued.'),
     createMetricCard('Epoch Overlay', `${releaseFlow?.currentEpoch ?? 'n/a'} / ${releaseFlow?.finalizedEpoch ?? 'n/a'}`, `gap=${releaseFlow?.epochsUntilFinality ?? 'n/a'} • overlay-only`, 'neutral', 'Observed head epoch versus finalized epoch; informational overlay, not canonical release truth.'),
+  );
+}
+
+function renderCluster(cluster) {
+  const summaryGrid = document.getElementById('cluster-summary');
+  const validatorGrid = document.getElementById('validator-grid');
+  if (!summaryGrid || !validatorGrid) return;
+
+  const nodes = Array.isArray(cluster?.nodes) ? cluster.nodes : [];
+  const reachableCount = nodes.filter((node) => node?.reachable === true).length;
+  const operationalCount = nodes.filter((node) => isOperationalStatus(node?.status)).length;
+  const leaderNode = nodes.find((node) => Number(node?.nodeId) === Number(cluster?.leaderNodeId));
+  const quorumTarget = nodes.length > 0 ? Math.floor(nodes.length / 2) + 1 : 0;
+  const clusterStateTone = ['active', 'healthy'].includes(String(cluster?.clusterState || '').toLowerCase()) ? 'ok' : 'neutral';
+  const orderedNodes = [...nodes].sort((left, right) => {
+    const leftLeader = Number(left?.nodeId) === Number(cluster?.leaderNodeId) ? 0 : 1;
+    const rightLeader = Number(right?.nodeId) === Number(cluster?.leaderNodeId) ? 0 : 1;
+    if (leftLeader !== rightLeader) return leftLeader - rightLeader;
+    return asNum(left?.nodeId, 999) - asNum(right?.nodeId, 999);
+  });
+
+  summaryGrid.replaceChildren(
+    createMetricCard('Cluster State', formatStatus(cluster?.clusterState), `term=${cluster?.term ?? 'n/a'} • nodes=${formatNumber(nodes.length)}`, clusterStateTone, 'Current validator-cluster status and observed term.'),
+    createMetricCard('Leader Node', leaderNode ? formatNodeId(leaderNode.nodeId) : 'n/a', leaderNode?.wallet || 'leader not resolved', 'neutral', 'The validator currently believed to lead consensus for this term.'),
+    createMetricCard('Reachable', formatNumber(reachableCount), `quorum=${quorumTarget} • unreachable=${formatNumber(nodes.length - reachableCount)}`, reachableCount === nodes.length && nodes.length > 0 ? 'ok' : 'warn', 'Validators currently reachable from the observed node.'),
+    createMetricCard('Operational Validators', formatNumber(operationalCount), `non-operational=${formatNumber(nodes.length - operationalCount)} • leaderId=${cluster?.leaderNodeId ?? 'n/a'}`, operationalCount === nodes.length && nodes.length > 0 ? 'ok' : 'warn', 'Validators currently reporting an active, healthy, or ready operating state.'),
+  );
+
+  validatorGrid.replaceChildren(...orderedNodes.map((node) => createValidatorCard(node, cluster)));
+  setText(
+    'cluster-note',
+    nodes.length > 0
+      ? `Validator roster shows wallet identity, role, readiness, and reachability for all ${nodes.length} observed nodes.`
+      : 'No validator roster returned by /ops/v1/cluster.',
   );
 }
 
@@ -290,6 +385,7 @@ async function refresh() {
     const { data, errors } = await fetchOptionalEndpoints({
       summary: runtime.endpoints.explorerSummary,
       overview: runtime.endpoints.overview,
+      cluster: runtime.endpoints.cluster,
       signals: runtime.endpoints.signals,
       releaseFlow: runtime.endpoints.proposalsReleaseFlow,
       config: runtime.endpoints.configOsgiDelta,
@@ -303,6 +399,7 @@ async function refresh() {
 
     renderHero(data.summary, data.releaseFlow, data.signals);
     renderOverview(data.summary, data.releaseFlow, data.signals, data.config, data.gc);
+    renderCluster(data.cluster);
     renderReleaseFlow(data.releaseFlow);
     renderSignals(data.signals);
     renderConfig(data.config);
