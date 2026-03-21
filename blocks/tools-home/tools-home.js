@@ -63,6 +63,85 @@ function buildLinkList(links, className) {
   return list;
 }
 
+const ATMOSPHERE_DOTS = [
+  { x: 8, y: 14, size: 8, variant: 'muted', dx: -10, dy: 6, delay: '-6s', duration: '24s' },
+  { x: 18, y: 26, size: 10, variant: 'validator', dx: 8, dy: -6, delay: '-12s', duration: '28s' },
+  { x: 28, y: 18, size: 7, variant: 'muted', dx: -6, dy: 8, delay: '-3s', duration: '22s' },
+  { x: 42, y: 16, size: 9, variant: 'validator', dx: 10, dy: 4, delay: '-8s', duration: '26s' },
+  { x: 56, y: 12, size: 12, variant: 'core', dx: 6, dy: -4, delay: '-10s', duration: '20s' },
+  { x: 66, y: 18, size: 10, variant: 'reader', dx: -8, dy: 6, delay: '-5s', duration: '24s' },
+  { x: 78, y: 22, size: 8, variant: 'muted', dx: 8, dy: -8, delay: '-14s', duration: '30s' },
+  { x: 88, y: 14, size: 10, variant: 'reader', dx: -6, dy: 8, delay: '-2s', duration: '22s' },
+  { x: 16, y: 48, size: 8, variant: 'muted', dx: 10, dy: -4, delay: '-4s', duration: '25s' },
+  { x: 32, y: 42, size: 10, variant: 'validator', dx: -10, dy: 8, delay: '-7s', duration: '27s' },
+  { x: 48, y: 38, size: 14, variant: 'core', dx: 8, dy: 10, delay: '-11s', duration: '21s' },
+  { x: 62, y: 44, size: 9, variant: 'reader', dx: 6, dy: -8, delay: '-1s', duration: '23s' },
+  { x: 76, y: 40, size: 12, variant: 'validator', dx: -8, dy: 6, delay: '-15s', duration: '31s' },
+  { x: 90, y: 48, size: 7, variant: 'muted', dx: 6, dy: -6, delay: '-9s', duration: '20s' },
+  { x: 22, y: 74, size: 11, variant: 'reader', dx: -6, dy: 8, delay: '-13s', duration: '29s' },
+  { x: 38, y: 70, size: 8, variant: 'muted', dx: 8, dy: -6, delay: '-5s', duration: '24s' },
+  { x: 56, y: 76, size: 12, variant: 'validator', dx: -10, dy: 6, delay: '-16s', duration: '32s' },
+  { x: 70, y: 72, size: 10, variant: 'reader', dx: 10, dy: -8, delay: '-6s', duration: '26s' },
+  { x: 84, y: 78, size: 8, variant: 'muted', dx: -6, dy: 8, delay: '-12s', duration: '28s' },
+];
+
+const ATMOSPHERE_LINKS = [
+  { x: 10, y: 17, width: 22, angle: 14, opacity: 0.16 },
+  { x: 26, y: 21, width: 28, angle: -10, opacity: 0.14 },
+  { x: 44, y: 17, width: 20, angle: 9, opacity: 0.12 },
+  { x: 56, y: 18, width: 24, angle: 14, opacity: 0.18 },
+  { x: 66, y: 24, width: 18, angle: -12, opacity: 0.14 },
+  { x: 24, y: 44, width: 30, angle: -8, opacity: 0.12 },
+  { x: 44, y: 41, width: 28, angle: 11, opacity: 0.17 },
+  { x: 62, y: 45, width: 22, angle: -14, opacity: 0.16 },
+  { x: 18, y: 73, width: 24, angle: -12, opacity: 0.12 },
+  { x: 48, y: 72, width: 30, angle: 10, opacity: 0.16 },
+  { x: 68, y: 74, width: 18, angle: -9, opacity: 0.12 },
+];
+
+function buildAtmosphere() {
+  const layer = document.createElement('div');
+  layer.className = 'tools-home-atmosphere';
+  layer.setAttribute('aria-hidden', 'true');
+
+  const mesh = document.createElement('div');
+  mesh.className = 'tools-home-atmosphere-mesh';
+  layer.append(mesh);
+
+  ATMOSPHERE_LINKS.forEach((link) => {
+    const beam = document.createElement('span');
+    beam.className = 'tools-home-atmosphere-link';
+    beam.style.left = `${link.x}%`;
+    beam.style.top = `${link.y}%`;
+    beam.style.width = `${link.width}%`;
+    beam.style.opacity = `${link.opacity}`;
+    beam.style.transform = `rotate(${link.angle}deg)`;
+    layer.append(beam);
+  });
+
+  ATMOSPHERE_DOTS.forEach((dot) => {
+    const node = document.createElement('span');
+    node.className = `tools-home-atmosphere-dot is-${dot.variant}`;
+    node.style.left = `${dot.x}%`;
+    node.style.top = `${dot.y}%`;
+    node.style.width = `${dot.size}px`;
+    node.style.height = `${dot.size}px`;
+    node.style.setProperty('--drift-x', `${dot.dx}px`);
+    node.style.setProperty('--drift-y', `${dot.dy}px`);
+    node.style.animationDelay = dot.delay;
+    node.style.animationDuration = dot.duration;
+    layer.append(node);
+  });
+
+  ['one', 'two', 'three'].forEach((variant) => {
+    const glow = document.createElement('span');
+    glow.className = `tools-home-atmosphere-glow is-${variant}`;
+    layer.append(glow);
+  });
+
+  return layer;
+}
+
 function buildHero(row) {
   const [, eyebrowCell, titleCell, bodyCell] = getRowCells(row);
   const section = document.createElement('section');
@@ -199,6 +278,7 @@ export default function decorate(block) {
 
   const shell = document.createElement('div');
   shell.className = 'tools-home-shell';
+  shell.append(buildAtmosphere());
 
   const cards = document.createElement('div');
   cards.className = 'tools-home-card-grid';

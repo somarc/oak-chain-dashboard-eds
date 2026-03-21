@@ -6,8 +6,109 @@ main .section.tools-home-section {
 }
 
 .tools-home .tools-home-shell {
+  position: relative;
+  isolation: isolate;
   display: grid;
   gap: 28px;
+  overflow: hidden;
+}
+
+.tools-home .tools-home-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tools-home .tools-home-atmosphere {
+  position: absolute;
+  inset: -6%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tools-home .tools-home-atmosphere-mesh {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at center, rgba(113, 225, 255, 0.34) 0 1px, transparent 1.5px),
+    linear-gradient(110deg, transparent 0 44%, rgba(108, 205, 184, 0.05) 44% 58%, transparent 58% 100%);
+  background-size: 30px 30px, 100% 100%;
+  opacity: 0.18;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.92), transparent 82%);
+}
+
+.tools-home .tools-home-atmosphere-link {
+  position: absolute;
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(90, 196, 219, 0), rgba(90, 196, 219, 0.44), rgba(90, 196, 219, 0));
+  box-shadow: 0 0 18px rgba(90, 196, 219, 0.2);
+  animation: tools-home-link-pulse 10s ease-in-out infinite;
+}
+
+.tools-home .tools-home-atmosphere-dot {
+  position: absolute;
+  border-radius: 999px;
+  transform: translate3d(0, 0, 0);
+  animation: tools-home-dot-drift 22s ease-in-out infinite;
+}
+
+.tools-home .tools-home-atmosphere-dot.is-muted {
+  background: rgba(170, 207, 221, 0.72);
+  box-shadow: 0 0 16px rgba(170, 207, 221, 0.18);
+}
+
+.tools-home .tools-home-atmosphere-dot.is-validator {
+  background: rgba(95, 229, 173, 0.82);
+  box-shadow:
+    0 0 0 4px rgba(95, 229, 173, 0.08),
+    0 0 22px rgba(95, 229, 173, 0.26);
+}
+
+.tools-home .tools-home-atmosphere-dot.is-reader {
+  background: rgba(103, 188, 255, 0.8);
+  box-shadow:
+    0 0 0 4px rgba(103, 188, 255, 0.08),
+    0 0 22px rgba(103, 188, 255, 0.22);
+}
+
+.tools-home .tools-home-atmosphere-dot.is-core {
+  background: rgba(255, 252, 244, 0.95);
+  box-shadow:
+    0 0 0 6px rgba(103, 188, 255, 0.1),
+    0 0 34px rgba(103, 188, 255, 0.3);
+}
+
+.tools-home .tools-home-atmosphere-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(10px);
+  opacity: 0.44;
+}
+
+.tools-home .tools-home-atmosphere-glow.is-one {
+  inset: 4% auto auto 58%;
+  width: 32rem;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(108, 193, 255, 0.18), transparent 68%);
+  animation: tools-home-glow-shift 18s ease-in-out infinite;
+}
+
+.tools-home .tools-home-atmosphere-glow.is-two {
+  inset: 34% auto auto 20%;
+  width: 24rem;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(88, 232, 183, 0.16), transparent 72%);
+  animation: tools-home-glow-shift 24s ease-in-out infinite reverse;
+}
+
+.tools-home .tools-home-atmosphere-glow.is-three {
+  right: 6%;
+  bottom: 4%;
+  width: 26rem;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12), transparent 74%);
+  animation: tools-home-glow-shift 22s ease-in-out infinite;
 }
 
 .tools-home .tools-home-hero,
@@ -17,7 +118,9 @@ main .section.tools-home-section {
   border-radius: 28px;
   border: 1px solid rgba(25, 76, 63, 0.12);
   background:
-    linear-gradient(180deg, rgba(255, 252, 244, 0.98), rgba(247, 242, 232, 0.98));
+    linear-gradient(180deg, rgba(255, 252, 244, 0.92), rgba(247, 242, 232, 0.88));
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   box-shadow:
     0 22px 54px rgba(3, 18, 13, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
@@ -118,6 +221,38 @@ main .section.tools-home-section {
   padding-bottom: 24px;
 }
 
+@keyframes tools-home-dot-drift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: translate3d(var(--drift-x), var(--drift-y), 0) scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes tools-home-link-pulse {
+  0%, 100% {
+    opacity: 0.1;
+  }
+
+  50% {
+    opacity: 0.34;
+  }
+}
+
+@keyframes tools-home-glow-shift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(10px, -12px, 0) scale(1.06);
+  }
+}
+
 @media (width >= 900px) {
   .tools-home .tools-home-shell {
     gap: 32px;
@@ -136,5 +271,13 @@ main .section.tools-home-section {
 
   .tools-home .tools-home-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tools-home .tools-home-atmosphere-dot,
+  .tools-home .tools-home-atmosphere-link,
+  .tools-home .tools-home-atmosphere-glow {
+    animation: none;
   }
 }

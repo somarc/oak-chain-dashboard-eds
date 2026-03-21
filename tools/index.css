@@ -64,19 +64,21 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.82fr);
-  gap: 20px;
-  align-items: end;
+  grid-template-columns: minmax(220px, 0.68fr) minmax(500px, 1.12fr);
+  gap: 36px;
+  align-items: stretch;
 }
 
 .card-copy {
-  max-width: 32rem;
+  max-width: 23rem;
+  align-self: end;
 }
 
 .hero-track-label {
   position: absolute;
-  top: 6px;
-  left: 2px;
+  top: 4px;
+  left: 56%;
+  transform: translateX(-10%);
   margin: 0;
   color: rgba(26, 94, 77, 0.56);
   text-transform: uppercase;
@@ -87,7 +89,7 @@
 
 .hero-evolution {
   position: relative;
-  min-height: 296px;
+  min-height: 344px;
   overflow: hidden;
   align-self: stretch;
 }
@@ -95,20 +97,22 @@
 .hero-evolution::before {
   content: '';
   position: absolute;
-  left: 10%;
-  right: 2%;
-  bottom: 30px;
+  left: 12%;
+  right: 8%;
+  bottom: 72px;
   height: 2px;
   background: linear-gradient(90deg, rgba(24, 59, 48, 0.02), rgba(28, 122, 95, 0.16) 30%, rgba(46, 199, 255, 0.36) 78%, rgba(46, 199, 255, 0));
   box-shadow: 0 0 24px rgba(46, 199, 255, 0.14);
+  transform: rotate(-13deg);
+  transform-origin: left center;
 }
 
 .hero-evolution::after {
   content: '';
   position: absolute;
-  right: -4%;
-  top: 12%;
-  width: 76%;
+  right: -1%;
+  top: 8%;
+  width: 74%;
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -119,14 +123,17 @@
 
 .evolution-list {
   position: absolute;
-  inset: 40px 0 76px;
+  inset: 56px 6% 126px 8%;
 }
 
 .evolution-step {
   position: absolute;
-  display: grid;
-  gap: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
+  width: max-content;
+  max-width: 10rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -135,30 +142,30 @@
 }
 
 .evolution-list .evolution-step:nth-child(1) {
-  left: 0;
-  bottom: 46%;
-  opacity: 0.24;
+  left: 4%;
+  top: 12%;
+  opacity: 0.28;
   transform: scale(0.78);
 }
 
 .evolution-list .evolution-step:nth-child(2) {
-  left: 18%;
-  bottom: 39%;
-  opacity: 0.4;
+  left: 22%;
+  top: 30%;
+  opacity: 0.44;
   transform: scale(0.88);
 }
 
 .evolution-list .evolution-step:nth-child(3) {
-  left: 39%;
-  bottom: 31%;
-  opacity: 0.58;
+  left: 46%;
+  top: 48%;
+  opacity: 0.6;
   transform: scale(0.98);
 }
 
 .evolution-list .evolution-step:nth-child(4) {
-  left: 62%;
-  bottom: 22%;
-  opacity: 0.82;
+  left: 72%;
+  top: 64%;
+  opacity: 0.84;
   transform: scale(1.06);
 }
 
@@ -175,18 +182,25 @@
   margin: 0;
   font-size: 1rem;
   font-weight: 500;
+  line-height: 1.08;
   color: rgba(18, 32, 25, 0.8);
+  text-wrap: balance;
+}
+
+.evolution-list .evolution-name {
+  max-width: 9ch;
 }
 
 .evolution-step--fifth {
-  right: 0;
-  bottom: 18px;
-  width: min(290px, 86%);
+  right: 3%;
+  bottom: 10px;
+  width: min(370px, 86%);
+  max-width: none;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 14px;
-  padding: 20px 22px;
+  gap: 16px;
+  padding: 22px 26px;
   border-radius: 28px;
   border: 1px solid rgba(21, 87, 67, 0.2);
   background:
@@ -201,6 +215,11 @@
 .evolution-step--fifth .evolution-index,
 .evolution-step--fifth .evolution-name {
   color: #f3f6ec;
+}
+
+.evolution-step--fifth .evolution-name {
+  font-size: 1.35rem;
+  line-height: 0.98;
 }
 
 .evolution-fifth-copy {
@@ -233,9 +252,9 @@
 }
 
 .hero-card--story h2 {
-  max-width: 10ch;
-  font-size: clamp(4rem, 5.4vw, 6rem);
-  line-height: 0.9;
+  max-width: 7ch;
+  font-size: clamp(3.3rem, 4.4vw, 4.95rem);
+  line-height: 0.92;
 }
 
 .hero-card--ops h2 {
@@ -248,6 +267,10 @@
   color: var(--dash-cream-muted);
   font-size: 1.15rem;
   line-height: 1.62;
+}
+
+.hero-card--story .card-body {
+  max-width: 21ch;
 }
 
 .hero-actions {
@@ -311,54 +334,54 @@
 
 @media (max-width: 1560px) {
   .hero-story-layout {
-    grid-template-columns: minmax(0, 1fr) minmax(250px, 0.72fr);
-    gap: 12px;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(430px, 1fr);
+    gap: 22px;
   }
 
   .card-copy {
-    max-width: 28rem;
+    max-width: 22rem;
   }
 
   .hero-card--story h2 {
-    max-width: 8.6ch;
-    font-size: clamp(3.4rem, 4.4vw, 5.2rem);
+    max-width: 6.8ch;
+    font-size: clamp(3rem, 3.95vw, 4.6rem);
   }
 
   .hero-evolution {
-    min-height: 256px;
+    min-height: 304px;
   }
 
   .evolution-list {
-    inset: 44px 0 82px;
+    inset: 50px 4% 118px 8%;
   }
 
   .evolution-list .evolution-step:nth-child(1) {
-    left: 2%;
-    bottom: 52%;
+    left: 0;
+    top: 14%;
     transform: scale(0.72);
   }
 
   .evolution-list .evolution-step:nth-child(2) {
     left: 18%;
-    bottom: 42%;
+    top: 31%;
     transform: scale(0.8);
   }
 
   .evolution-list .evolution-step:nth-child(3) {
-    left: 38%;
-    bottom: 31%;
+    left: 42%;
+    top: 48%;
     transform: scale(0.88);
   }
 
   .evolution-list .evolution-step:nth-child(4) {
-    left: 60%;
-    bottom: 20%;
+    left: 66%;
+    top: 64%;
     transform: scale(0.96);
   }
 
   .evolution-step--fifth {
-    width: min(250px, 82%);
-    padding: 18px 18px 16px;
+    width: min(330px, 84%);
+    padding: 18px 20px 16px;
     gap: 12px;
   }
 
@@ -374,58 +397,60 @@
 
 @media (max-width: 1360px) {
   .hero-story-layout {
-    grid-template-columns: minmax(0, 1fr) 220px;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 1fr);
+    gap: 18px;
   }
 
   .card-copy {
-    max-width: 25rem;
+    max-width: 20rem;
   }
 
   .hero-card--story h2 {
-    max-width: 7.8ch;
-    font-size: clamp(3rem, 4vw, 4.5rem);
+    max-width: 6ch;
+    font-size: clamp(2.7rem, 3.6vw, 3.95rem);
   }
 
   .card-body {
-    max-width: 24rem;
+    max-width: 18rem;
     font-size: 1.04rem;
   }
 
   .hero-evolution {
-    min-height: 224px;
+    min-height: 268px;
   }
 
   .hero-track-label {
-    top: 2px;
+    left: 54%;
   }
 
   .evolution-list {
-    inset: 40px 0 90px;
+    inset: 42px 4% 112px 4%;
   }
 
   .evolution-list .evolution-step:nth-child(1) {
     left: 0;
-    bottom: 58%;
+    top: 16%;
   }
 
   .evolution-list .evolution-step:nth-child(2) {
-    left: 12%;
-    bottom: 46%;
+    left: 18%;
+    top: 33%;
   }
 
   .evolution-list .evolution-step:nth-child(3) {
-    left: 28%;
-    bottom: 34%;
+    left: 42%;
+    top: 49%;
   }
 
   .evolution-list .evolution-step:nth-child(4) {
-    left: 48%;
-    bottom: 22%;
+    left: 70%;
+    top: 64%;
   }
 
   .evolution-step--fifth {
-    width: min(210px, 80%);
-    bottom: 10px;
+    width: min(290px, 90%);
+    right: 0;
+    bottom: 12px;
   }
 }
 
@@ -436,11 +461,20 @@
 
   .hero-story-layout {
     grid-template-columns: 1fr;
-    gap: 26px;
+    gap: 22px;
   }
 
   .feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-track-label {
+    left: 0;
+    transform: none;
+  }
+
+  .hero-card--story .card-body {
+    max-width: 28ch;
   }
 }
 
@@ -475,32 +509,34 @@
   }
 
   .hero-evolution::before {
-    left: 2%;
-    right: 0;
+    left: 4%;
+    right: 4%;
+    bottom: 68px;
   }
 
   .evolution-list .evolution-step:nth-child(1) {
     left: 0;
-    bottom: 56%;
+    top: 18%;
   }
 
   .evolution-list .evolution-step:nth-child(2) {
     left: 12%;
-    bottom: 44%;
+    top: 34%;
   }
 
   .evolution-list .evolution-step:nth-child(3) {
-    left: 30%;
-    bottom: 31%;
+    left: 34%;
+    top: 49%;
   }
 
   .evolution-list .evolution-step:nth-child(4) {
-    left: 52%;
-    bottom: 18%;
+    left: 58%;
+    top: 64%;
   }
 
   .evolution-step--fifth {
     width: min(100%, 320px);
+    right: 0;
   }
 
   .hero-card--ops h2,
