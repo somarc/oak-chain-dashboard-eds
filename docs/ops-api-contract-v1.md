@@ -222,9 +222,17 @@ cross-cluster sharding posture.
   },
   "sharding": {
     "enabled": true,
+    "proofHarness": "3x2-local",
+    "clusterName": "oak-local-a",
+    "runtimeRoot": "~/oak-chain/3x2/cluster-a",
+    "httpBasePort": 8090,
+    "aeronClusterBasePort": 9000,
+    "mediaDriverDirBase": "~/oak-chain/3x2/cluster-a/aeron-media",
     "localPrefixes": "00-7f",
     "remoteMountCount": 1,
-    "authoritativeStoreSeparated": true
+    "authoritativeStoreSeparated": true,
+    "crossClusterMountsReadOnly": true,
+    "crossClusterMountsOutsideAeron": true
   }
 }
 ```
@@ -235,6 +243,7 @@ running with:
 - a separate authoritative local store
 - remote read-only shard mounts
 - explicit local ownership prefixes
+- a visible proof-harness identity and port separation
 
 ### 8) `GET /ops/v1/events/recent?limit=50`
 

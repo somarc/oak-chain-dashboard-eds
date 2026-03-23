@@ -44,6 +44,14 @@ function formatNodeId(value) {
   return Number.isFinite(parsed) ? `Node ${parsed}` : 'Node --';
 }
 
+function compactPath(value, maxLength = 48) {
+  const text = String(value || '');
+  if (text.length <= maxLength) return text;
+  const left = Math.max(16, Math.floor((maxLength - 3) / 2));
+  const right = Math.max(12, maxLength - left - 3);
+  return `${text.slice(0, left)}...${text.slice(-right)}`;
+}
+
 function getSharding(health) {
   return health?.sharding || {};
 }
@@ -340,14 +348,19 @@ function renderSignals(signals) {
   grid.replaceChildren(...prioritized.map((signal) => createSignalCard(signal)));
 }
 
-function renderConfig(config) {
+function renderConfig(config, health) {
   const summary = config?.summary || {};
   const changed = Array.isArray(config?.changed) ? config.changed.slice(0, 8) : [];
   const summaryGrid = document.getElementById('config-summary');
   const changes = document.getElementById('config-changes');
   if (!summaryGrid || !changes) return;
+  const sharding = getSharding(health);
 
   summaryGrid.replaceChildren(
+    createMetricCard('Proof Harness', sharding.proofHarness || 'n/a', 'local only', sharding.enabled ? 'ok' : 'neutral', 'Local multi-cluster proof mode, not production density guidance.'),
+    createMetricCard('Cluster Name', sharding.clusterName || 'n/a', `root=${compactPath(sharding.runtimeRoot || 'n/a')}`, 'neutral', 'Logical cluster identity and filesystem root separation.'),
+    createMetricCard('Port Separation', `HTTP ${sharding.httpBasePort ?? 'n/a'} / Aeron ${sharding.aeronClusterBasePort ?? 'n/a'}`, 'separated per cluster', sharding.enabled ? 'ok' : 'neutral', 'HTTP and Aeron bases are kept apart so two clusters can coexist on one host.'),
+    createMetricCard('MediaDriver', compactPath(sharding.mediaDriverDirBase || 'n/a'), `outside Aeron=${formatBoolean(sharding.crossClusterMountsOutsideAeron)}`, sharding.authoritativeStoreSeparated ? 'ok' : 'warn', 'Per-cluster MediaDriver directories avoid local driver collisions.'),
     createMetricCard('Changed Keys', formatNumber(summary.changedKeys || 0), `total=${formatNumber(summary.totalKeys || 0)}`, 'neutral', 'Total runtime-visible keys diverging from the default config set.'),
     createMetricCard('Guarded Drift', formatNumber(summary.guardedChanged || 0), 'Runtime or startup settings with operational risk', summary.guardedChanged > 0 ? 'warn' : 'neutral', 'Sensitive operational settings that changed from their expected defaults.'),
     createMetricCard('Expert Drift', formatNumber(summary.expertOnlyChanged || 0), 'Needs deliberate owner review', summary.expertOnlyChanged > 0 ? 'warn' : 'neutral', 'Expert-only settings changed and worth explicit owner review.'),
@@ -417,7 +430,7 @@ async function refresh() {
     renderCluster(data.cluster, data.health);
     renderReleaseFlow(data.releaseFlow);
     renderSignals(data.signals);
-    renderConfig(data.config);
+    renderConfig(data.config, data.health);
     renderGc(data.gc, data.queueStats);
     renderDebug(data.queueStats, data.releaseFlow, data.signals, data.health);
     renderShellStatus(data.summary, data.signals, errors);

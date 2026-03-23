@@ -257,6 +257,35 @@ function shortWallet(wallet) {
   return `${wallet.slice(0, 10)}...${wallet.slice(-8)}`;
 }
 
+function readIntEnv(names, fallback = 0) {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw === undefined || raw === null || String(raw).trim() === '') continue;
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
+function readStringEnv(names, fallback = '') {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw === undefined || raw === null) continue;
+    const trimmed = String(raw).trim();
+    if (trimmed.length > 0) return trimmed;
+  }
+  return fallback;
+}
+
+function readBooleanEnv(names, fallback = false) {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw === undefined || raw === null || String(raw).trim() === '') continue;
+    return String(raw).trim().toLowerCase() === 'true';
+  }
+  return fallback;
+}
+
 async function upstreamGet(path) {
   const target = `${UPSTREAM_BASE}${path.startsWith('/') ? path : `/${path}`}`;
   const response = await fetch(target, { headers: { accept: 'application/json' } });
@@ -1288,6 +1317,12 @@ async function resolveHealth() {
       },
     },
     sharding: {
+      proofHarness: readStringEnv(['OPS_SHARDING_PROOF_HARNESS', 'OAK_SHARDING_PROOF_HARNESS'], '3x2-local'),
+      clusterName: readStringEnv(['OPS_SHARDING_CLUSTER_NAME', 'OAK_CLUSTER_NAME'], 'oak-local-a'),
+      runtimeRoot: readStringEnv(['OPS_SHARDING_RUNTIME_ROOT', 'CLUSTER_RUNTIME_ROOT'], '~/oak-chain/3x2/cluster-a'),
+      httpBasePort: readIntEnv(['OPS_SHARDING_HTTP_BASE_PORT', 'OAK_VALIDATOR_HTTP_BASE_PORT'], 8090),
+      aeronClusterBasePort: readIntEnv(['OPS_SHARDING_AERON_BASE_PORT', 'AERON_CLUSTER_BASE_PORT'], 9000),
+      mediaDriverDirBase: readStringEnv(['OPS_SHARDING_MEDIA_DRIVER_DIR_BASE', 'AERON_DIR_BASE'], '~/oak-chain/3x2/cluster-a/aeron-media'),
       enabled: Boolean(pick(snapshotSharding, ['enabled'], pick(deepSharding, ['enabled'], false))),
       localPrefixes: String(pick(snapshotSharding, ['localPrefixes'], pick(deepSharding, ['localPrefixes'], 'none'))),
       remoteMountCount: toNum(
@@ -1300,6 +1335,14 @@ async function resolveHealth() {
           ['authoritativeStoreSeparated'],
           pick(deepSharding, ['authoritativeStoreSeparated'], false),
         ),
+      ),
+      crossClusterMountsReadOnly: readBooleanEnv(
+        ['OPS_SHARDING_CROSS_CLUSTER_READ_ONLY', 'OAK_SHARDING_CROSS_CLUSTER_READ_ONLY'],
+        true,
+      ),
+      crossClusterMountsOutsideAeron: readBooleanEnv(
+        ['OPS_SHARDING_CROSS_CLUSTER_OUTSIDE_AERON', 'OAK_SHARDING_CROSS_CLUSTER_OUTSIDE_AERON'],
+        true,
       ),
     },
   };
