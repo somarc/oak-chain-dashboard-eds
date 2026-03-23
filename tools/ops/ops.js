@@ -44,6 +44,10 @@ function formatNodeId(value) {
   return Number.isFinite(parsed) ? `Node ${parsed}` : 'Node --';
 }
 
+function getSharding(health) {
+  return health?.sharding || {};
+}
+
 function isOperationalStatus(value) {
   const normalized = String(value || '').toLowerCase();
   return normalized === 'ready' || normalized === 'active' || normalized === 'healthy';
@@ -200,13 +204,14 @@ function syncPanelFromLocation({ canonicalize = false } = {}) {
   });
 }
 
-function renderHero(summary, releaseFlow, signals) {
+function renderHero(summary, releaseFlow, signals, health) {
   const cluster = summary?.cluster || {};
   const signalSummary = signals?.summary || {};
+  const sharding = getSharding(health);
   setText('cluster-state', String(cluster.clusterState || 'unknown').toUpperCase());
   setText(
     'cluster-detail',
-    `role=${cluster.role || 'n/a'} • term=${cluster.currentTerm ?? 'n/a'} • validators=${cluster.reachableValidators ?? 'n/a'}`,
+    `term=${cluster.currentTerm ?? 'n/a'} • validators=${cluster.reachableValidators ?? 'n/a'} • owned=${sharding.localPrefixes || 'none'}`,
   );
 
   setText('governor-state', String(releaseFlow?.governor?.state || 'unknown').toUpperCase());
@@ -228,15 +233,18 @@ function renderHero(summary, releaseFlow, signals) {
   );
 }
 
-function renderOverview(summary, releaseFlow, signals, config, gc) {
+function renderOverview(summary, releaseFlow, signals, config, gc, health) {
   const cluster = summary?.cluster || {};
   const queue = summary?.queue?.compact || {};
   const signalSummary = signals?.summary || {};
+  const sharding = getSharding(health);
+  const shardingTone = sharding.enabled ? 'ok' : 'neutral';
   const grid = document.getElementById('overview-grid');
   if (!grid) return;
   grid.replaceChildren(
     createMetricCard('Leader', cluster.currentLeader || 'n/a', `role=${cluster.role || 'n/a'} • term=${cluster.currentTerm ?? 'n/a'}`, 'neutral', 'Current node acting as the observed cluster coordinator.'),
     createMetricCard('Nodes', formatNumber(cluster.nodeCount || 0), `quorum=${cluster.quorum ?? 'n/a'} • reachable=${cluster.reachableValidators ?? 'n/a'}`, 'neutral', 'Validator membership size and quorum posture in the current cluster view.'),
+    createMetricCard('Sharding', sharding.enabled ? (sharding.localPrefixes || 'configured') : 'disabled', `remote mounts=${formatNumber(sharding.remoteMountCount || 0)} • separated=${formatBoolean(sharding.authoritativeStoreSeparated)}`, shardingTone, 'Local ownership range and whether remote read mounts stay outside the authoritative Aeron store.'),
     createMetricCard('Queue Pending', formatNumber(queue.queuePending || 0), `mempool=${formatNumber(queue.mempoolPendingCount || 0)} • backpressure=${formatNumber(queue.backpressurePending || 0)}`, 'neutral', 'Outstanding proposals still waiting somewhere in the queueing path.'),
     createMetricCard('Verified Resident', formatNumber(releaseFlow?.releaseStages?.verifiedResidentProposalCount || 0), `ready=${formatNumber(releaseFlow?.releaseStages?.releaseReadyProposalCount || 0)} • overflow=${formatNumber(releaseFlow?.releaseStages?.backpressureOverflowProposalCount || 0)}`, 'neutral', 'Verified proposals still resident in release memory before finalization or overflow.'),
     createMetricCard('Signals', `${signalSummary.critical ?? 0} critical`, `warn=${signalSummary.warn ?? 0} • ok=${signalSummary.ok ?? 0}`, signalSummary.critical > 0 ? 'critical' : 'ok', 'Count of active operator health findings grouped by severity.'),
@@ -246,7 +254,7 @@ function renderOverview(summary, releaseFlow, signals, config, gc) {
   );
 }
 
-function renderCluster(cluster) {
+function renderCluster(cluster, health) {
   const summaryGrid = document.getElementById('cluster-summary');
   const validatorGrid = document.getElementById('validator-grid');
   if (!summaryGrid || !validatorGrid) return;
@@ -257,6 +265,8 @@ function renderCluster(cluster) {
   const leaderNode = nodes.find((node) => Number(node?.nodeId) === Number(cluster?.leaderNodeId));
   const quorumTarget = nodes.length > 0 ? Math.floor(nodes.length / 2) + 1 : 0;
   const clusterStateTone = ['active', 'healthy'].includes(String(cluster?.clusterState || '').toLowerCase()) ? 'ok' : 'neutral';
+  const sharding = getSharding(health);
+  const shardingTone = sharding.enabled ? 'ok' : 'neutral';
   const orderedNodes = [...nodes].sort((left, right) => {
     const leftLeader = Number(left?.nodeId) === Number(cluster?.leaderNodeId) ? 0 : 1;
     const rightLeader = Number(right?.nodeId) === Number(cluster?.leaderNodeId) ? 0 : 1;
@@ -269,13 +279,16 @@ function renderCluster(cluster) {
     createMetricCard('Leader Node', leaderNode ? formatNodeId(leaderNode.nodeId) : 'n/a', leaderNode?.wallet || 'leader not resolved', 'neutral', 'The validator currently believed to lead consensus for this term.'),
     createMetricCard('Reachable', formatNumber(reachableCount), `quorum=${quorumTarget} • unreachable=${formatNumber(nodes.length - reachableCount)}`, reachableCount === nodes.length && nodes.length > 0 ? 'ok' : 'warn', 'Validators currently reachable from the observed node.'),
     createMetricCard('Operational Validators', formatNumber(operationalCount), `non-operational=${formatNumber(nodes.length - operationalCount)} • leaderId=${cluster?.leaderNodeId ?? 'n/a'}`, operationalCount === nodes.length && nodes.length > 0 ? 'ok' : 'warn', 'Validators currently reporting an active, healthy, or ready operating state.'),
+    createMetricCard('Authority Model', 'LOCAL AERON', `cross-cluster=read-only • discovery=separate`, shardingTone, 'The local cluster is the only writable authority plane; remote clusters are mounted lazily outside consensus.'),
+    createMetricCard('Owned Prefixes', sharding.localPrefixes || 'none', `sharding=${formatBoolean(sharding.enabled)} • separated=${formatBoolean(sharding.authoritativeStoreSeparated)}`, shardingTone, 'Wallet-prefix ranges currently owned by this cluster for authoritative writes.'),
+    createMetricCard('Remote Mounts', formatNumber(sharding.remoteMountCount || 0), `lazy read-only • outside Aeron`, shardingTone, 'Remote shard projections currently mounted for cross-cluster reads.'),
   );
 
   validatorGrid.replaceChildren(...orderedNodes.map((node) => createValidatorCard(node, cluster)));
   setText(
     'cluster-note',
     nodes.length > 0
-      ? `Validator roster shows wallet identity, role, readiness, and reachability for all ${nodes.length} observed nodes.`
+      ? `This cluster is the local Aeron fiefdom: ${nodes.length} observed validators, owned prefixes ${sharding.localPrefixes || 'none'}, and ${formatNumber(sharding.remoteMountCount || 0)} remote read-only mount(s).`
       : 'No validator roster returned by /ops/v1/cluster.',
   );
 }
@@ -367,10 +380,11 @@ function renderGc(gc, queueStats) {
   );
 }
 
-function renderDebug(queueStats, releaseFlow, signals) {
+function renderDebug(queueStats, releaseFlow, signals, health) {
   setText('debug-queue', formatJson(queueStats));
   setText('debug-release', formatJson(releaseFlow));
   setText('debug-signals', formatJson(signals));
+  setText('debug-health', formatJson(health));
 }
 
 async function refresh() {
@@ -386,6 +400,7 @@ async function refresh() {
       summary: runtime.endpoints.explorerSummary,
       overview: runtime.endpoints.overview,
       cluster: runtime.endpoints.cluster,
+      health: runtime.endpoints.health,
       signals: runtime.endpoints.signals,
       releaseFlow: runtime.endpoints.proposalsReleaseFlow,
       config: runtime.endpoints.configOsgiDelta,
@@ -397,14 +412,14 @@ async function refresh() {
       throw new Error(errors[0] || 'No ops endpoints available');
     }
 
-    renderHero(data.summary, data.releaseFlow, data.signals);
-    renderOverview(data.summary, data.releaseFlow, data.signals, data.config, data.gc);
-    renderCluster(data.cluster);
+    renderHero(data.summary, data.releaseFlow, data.signals, data.health);
+    renderOverview(data.summary, data.releaseFlow, data.signals, data.config, data.gc, data.health);
+    renderCluster(data.cluster, data.health);
     renderReleaseFlow(data.releaseFlow);
     renderSignals(data.signals);
     renderConfig(data.config);
     renderGc(data.gc, data.queueStats);
-    renderDebug(data.queueStats, data.releaseFlow, data.signals);
+    renderDebug(data.queueStats, data.releaseFlow, data.signals, data.health);
     renderShellStatus(data.summary, data.signals, errors);
 
     const refreshedAt = `Updated ${new Date().toLocaleTimeString()}`;

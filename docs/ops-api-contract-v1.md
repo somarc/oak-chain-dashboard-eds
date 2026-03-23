@@ -1,7 +1,7 @@
 # Ops API Contract v1 (EDS Dashboard)
 
 Status: Draft (day-one baseline)
-Last Updated: 2026-03-20
+Last Updated: 2026-03-22
 Owner: Oak Chain Dashboard + Oak Segment Consensus
 
 ## Purpose
@@ -38,6 +38,8 @@ This contract is the UI read model and is intentionally separate from raw intern
 - Removing fields or changing field types requires `/ops/v2`.
 - Canonical operator lifecycle views use `/release-flow` endpoints.
 - `/epochs` endpoints are compatibility overlays only and are deprecated for new operator workflows.
+- Cluster authority is local to one Aeron cluster. Cross-cluster mounts and
+  discovery are separate concerns and must not be modeled as shared consensus.
 
 ## Standard Response Envelope
 
@@ -108,7 +110,10 @@ Purpose: single-call summary for top-of-dashboard cards.
 
 ### 2) `GET /ops/v1/cluster`
 
-Purpose: authoritative cluster topology + node readiness.
+Purpose: authoritative local Aeron cluster topology + node readiness.
+
+This endpoint describes the current writable fiefdom only. It must not imply
+that cross-cluster read mounts participate in local consensus.
 
 `data` shape:
 
@@ -201,7 +206,8 @@ Purpose: ack flow health and failure indicators.
 
 ### 7) `GET /ops/v1/health`
 
-Purpose: consolidated health signal for dashboard and runbooks.
+Purpose: consolidated health signal for dashboard and runbooks, including
+cross-cluster sharding posture.
 
 `data` shape:
 
@@ -213,9 +219,22 @@ Purpose: consolidated health signal for dashboard and runbooks.
     "storage": "pass",
     "network": "pass",
     "api": "pass"
+  },
+  "sharding": {
+    "enabled": true,
+    "localPrefixes": "00-7f",
+    "remoteMountCount": 1,
+    "authoritativeStoreSeparated": true
   }
 }
 ```
+
+`sharding` is the contract surface that tells operators whether the node is
+running with:
+
+- a separate authoritative local store
+- remote read-only shard mounts
+- explicit local ownership prefixes
 
 ### 8) `GET /ops/v1/events/recent?limit=50`
 
@@ -641,7 +660,7 @@ Compatibility notes:
 - `/v1/explorer/release-flow` -> `/ops/v1/explorer/release-flow`
 - `/v1/proposals/queue/stats` + `/v1/consensus/status` (+ epoch/priority counters when available) -> `/ops/v1/proposals/epochs` (compatibility overlay; deprecated)
 - `/v1/explorer/epochs` -> `/ops/v1/explorer/epochs` (compatibility overlay; deprecated)
-- `/health/deep` -> `/ops/v1/health`
+- `/v1/ops/snapshots/health` + `/health/deep` -> `/ops/v1/health`
 - `/v1/events/recent` -> `/ops/v1/events/recent`
 - `/v1/events/stats` -> `/ops/v1/events/stats`
 - `/v1/consensus/status` + `/v1/proposals/queue/stats` -> `/ops/v1/finality`

@@ -1238,6 +1238,8 @@ async function resolveHealth() {
   const deepConsensus = pick(deep, ['consensus'], {});
   const deepClients = pick(deep, ['clients'], {});
   const deepBlob = pick(deep, ['blobStore'], {});
+  const deepSharding = pick(deep, ['sharding'], {});
+  const snapshotSharding = pick(opsHealth, ['sharding'], {});
   return {
     status: String(pick(opsHealth, ['status'], pick(shallow, ['status'], pick(deep, ['success'], false) ? 'healthy' : 'degraded')),
     ).toLowerCase(),
@@ -1284,6 +1286,21 @@ async function resolveHealth() {
         cidMappingAvailable: Boolean(pick(deepBlob, ['cidMappingAvailable'], false)),
         ipfsGateway: pick(deepBlob, ['ipfsGateway'], null),
       },
+    },
+    sharding: {
+      enabled: Boolean(pick(snapshotSharding, ['enabled'], pick(deepSharding, ['enabled'], false))),
+      localPrefixes: String(pick(snapshotSharding, ['localPrefixes'], pick(deepSharding, ['localPrefixes'], 'none'))),
+      remoteMountCount: toNum(
+        pick(snapshotSharding, ['remoteMountCount'], pick(deepSharding, ['remoteMountCount'], 0)),
+        0,
+      ),
+      authoritativeStoreSeparated: Boolean(
+        pick(
+          snapshotSharding,
+          ['authoritativeStoreSeparated'],
+          pick(deepSharding, ['authoritativeStoreSeparated'], false),
+        ),
+      ),
     },
   };
 }
@@ -1969,6 +1986,12 @@ function handle(req, res) {
         storage: 'pass',
         network: 'pass',
         api: 'pass',
+      },
+      sharding: {
+        enabled: true,
+        localPrefixes: '00-7f',
+        remoteMountCount: 1,
+        authoritativeStoreSeparated: true,
       },
     }));
     return;

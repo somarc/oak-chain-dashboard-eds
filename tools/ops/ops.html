@@ -154,7 +154,7 @@
               <p class="card-kicker">Operator Control Plane</p>
               <h2>The Fifth Element in Operator Form</h2>
               <p class="card-body">
-                Oak Ops is the adaptive control plane for the global P2P Oak repository. Release flow remains canonical; epoch data stays informational. Use the panels below to move from the high-level operator read model into release stages, signals, config drift, GC posture, and raw debug surfaces.
+                Oak Ops is the adaptive control plane for the global P2P Oak repository. Each validator cluster is an Aeron-backed fiefdom with one authoritative writable repository; cross-cluster reads are lazy and discovery stays separate. Use the panels below to move from that operator model into release stages, signals, config drift, GC posture, and raw debug surfaces.
               </p>
             </div>
             <div class="ops-intro-actions">
@@ -176,7 +176,7 @@
             <article class="hero-card">
               <p class="hero-label">Cluster</p>
               <p id="cluster-state" class="hero-value">--</p>
-              <p class="hero-description">Observed validator-cluster posture for the current Raft term.</p>
+              <p class="hero-description">Observed posture of the local authoritative Aeron cluster.</p>
               <p id="cluster-detail" class="hero-detail">Awaiting sample</p>
             </article>
             <article class="hero-card">
@@ -216,7 +216,7 @@
                 <p class="eyebrow">Validator Truth</p>
                 <h2>Cluster and Validators</h2>
               </div>
-              <p class="section-meta">Authoritative topology, reachability, and node readiness from <code>/ops/v1/cluster</code></p>
+              <p class="section-meta">Authoritative local topology from <code>/ops/v1/cluster</code> plus sharding posture from <code>/ops/v1/health</code></p>
             </div>
             <div id="cluster-summary" class="summary-grid"></div>
             <div id="validator-grid" class="validator-grid"></div>
@@ -291,6 +291,10 @@
               <article class="debug-card">
                 <h3>Signals</h3>
                 <pre id="debug-signals">Awaiting sample.</pre>
+              </article>
+              <article class="debug-card">
+                <h3>Health</h3>
+                <pre id="debug-health">Awaiting sample.</pre>
               </article>
             </div>
           </section>
