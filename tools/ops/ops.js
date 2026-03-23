@@ -1,11 +1,12 @@
 import {
   runtime,
+  fetchEndpoint,
   fetchOptionalEndpoints,
   initDashboardShell,
   renderShellStatus,
 } from '/tools/shell.js';
 
-const PANELS = ['overview', 'cluster', 'release', 'signals', 'config', 'gc', 'debug'];
+const PANELS = ['overview', 'cluster', 'network', 'release', 'signals', 'config', 'gc', 'debug'];
 const app = {
   panel: 'overview',
   timer: null,
@@ -50,6 +51,30 @@ function compactPath(value, maxLength = 48) {
   const left = Math.max(16, Math.floor((maxLength - 3) / 2));
   const right = Math.max(12, maxLength - left - 3);
   return `${text.slice(0, left)}...${text.slice(-right)}`;
+}
+
+function formatCountLabel(value, noun) {
+  const count = asNum(value, 0);
+  return `${formatNumber(count)} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+function formatOptionalCount(value, noun = 'node') {
+  const count = Number(value);
+  if (!Number.isFinite(count) || count <= 0) return 'n/a';
+  return formatCountLabel(count, noun);
+}
+
+function toneForNetworkStatus(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (['healthy', 'visible', 'stable', 'observable', 'mounted', 'active', 'ready'].includes(normalized)) return 'ok';
+  if (['partial', 'degraded', 'lagging', 'warming'].includes(normalized)) return 'warn';
+  return 'unknown';
+}
+
+function toSentenceCase(value, fallback = 'unknown') {
+  const text = String(value || fallback).replace(/[-_]+/g, ' ').trim();
+  if (!text) return fallback;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function getSharding(health) {
@@ -169,6 +194,191 @@ function createValidatorCard(node, cluster) {
     </dl>
   `;
   return card;
+}
+
+function buildNetworkModel(network, cluster, health) {
+  const sharding = getSharding(health);
+  const nodes = Array.isArray(cluster?.nodes) ? cluster.nodes : [];
+  const leaderNode = nodes.find((node) => Number(node?.nodeId) === Number(cluster?.leaderNodeId)) || null;
+  const remoteMountCount = asNum(sharding.remoteMountCount, 0);
+  const derivedMountedNeighbors = remoteMountCount > 0
+    ? [{
+        clusterId: 'mounted-read-fabric',
+        displayName: 'Mounted Read Fabric',
+        relation: 'Lazy read-only shard horizon',
+        ownedPrefixes: 'external prefixes',
+        observedNodeCount: null,
+        status: sharding.crossClusterMountsReadOnly ? 'visible' : 'partial',
+        transport: sharding.crossClusterMountsOutsideAeron ? 'HTTP segment transfer' : 'mixed',
+        note: `${formatCountLabel(remoteMountCount, 'remote prefix mount')} observed outside the local Aeron authority plane.`,
+      }]
+    : [];
+
+  const mountedNeighbors = Array.isArray(network?.mountedNeighbors) && network.mountedNeighbors.length > 0
+    ? network.mountedNeighbors
+    : derivedMountedNeighbors;
+
+  const localCluster = {
+    clusterId: network?.localCluster?.clusterId || sharding.clusterName || 'local-cluster',
+    displayName: network?.localCluster?.displayName || sharding.clusterName || 'Local Aeron fiefdom',
+    roleLabel: network?.localCluster?.roleLabel || 'Authoritative local write scope',
+    authority: network?.localCluster?.authority || 'Authoritative writes stay inside this Aeron cluster.',
+    consensusPlane: network?.localCluster?.consensusPlane || 'Aeron consensus',
+    writeRule: network?.localCluster?.writeRule || 'Local wallets write here; foreign wallets redirect before queueing.',
+    ownedPrefixes: network?.localCluster?.ownedPrefixes || sharding.localPrefixes || 'none',
+    nodeCount: asNum(network?.localCluster?.nodeCount, nodes.length),
+    leaderLabel: network?.localCluster?.leaderLabel || (leaderNode ? `${formatNodeId(leaderNode.nodeId)} leads` : 'Leader unresolved'),
+    status: network?.localCluster?.status || cluster?.clusterState || 'unknown',
+    nodes,
+  };
+
+  const outerNetwork = {
+    label: network?.outerNetwork?.label || 'Oak Chain beyond the local mount horizon',
+    status: network?.outerNetwork?.status || (mountedNeighbors.length > 0 ? 'observable' : 'local-only'),
+    summary: network?.outerNetwork?.summary || 'Independent Aeron fiefdoms can be read across a lazy fabric without collapsing into one consensus domain.',
+    discoveryPlane: network?.outerNetwork?.discoveryPlane || 'Separate control plane',
+    readFabric: network?.outerNetwork?.readFabric || (mountedNeighbors.length > 0 ? 'Lazy read-only mount fabric' : 'No mounted neighbors observed yet'),
+    writeAuthority: network?.outerNetwork?.writeAuthority || 'Each cluster owns and writes only its own shard authority.',
+    observedClusterCount: asNum(network?.outerNetwork?.observedClusterCount, 1 + mountedNeighbors.length),
+    mountedClusterCount: asNum(network?.outerNetwork?.mountedClusterCount, mountedNeighbors.length),
+    principles: Array.isArray(network?.outerNetwork?.principles) && network.outerNetwork.principles.length > 0
+      ? network.outerNetwork.principles
+      : [
+          'Aeron governs the local writable repository only.',
+          'Cross-cluster reads are lazy and read-only.',
+          'Discovery stays separate from consensus.',
+        ],
+  };
+
+  return {
+    source: network ? 'endpoint' : 'derived',
+    topologyModel: network?.topologyModel || 'Aeron fiefdoms with a lazy read fabric',
+    networkStatus: network?.networkStatus || outerNetwork.status,
+    localCluster,
+    mountedNeighbors,
+    outerNetwork,
+  };
+}
+
+function renderNetwork(network, cluster, health) {
+  const model = buildNetworkModel(network, cluster, health);
+  const summaryGrid = document.getElementById('network-summary');
+  const localCard = document.getElementById('network-local-cluster');
+  const fabricRibbon = document.getElementById('network-fabric-ribbon');
+  const remoteGrid = document.getElementById('network-remote-grid');
+  const horizon = document.getElementById('network-horizon');
+  if (!summaryGrid || !localCard || !fabricRibbon || !remoteGrid || !horizon) return;
+
+  const networkTone = toneForNetworkStatus(model.networkStatus);
+  const localTone = toneForNetworkStatus(model.localCluster.status);
+  const mountedCount = model.mountedNeighbors.length;
+
+  summaryGrid.replaceChildren(
+    createMetricCard('Local Fiefdom', model.localCluster.displayName, `${formatOptionalCount(model.localCluster.nodeCount)} • ${model.localCluster.ownedPrefixes}`, localTone, 'The Aeron cluster this dashboard directly observes as the writable authority plane.'),
+    createMetricCard('Mounted Horizon', formatCountLabel(mountedCount, 'neighbor'), `${formatCountLabel(getSharding(health).remoteMountCount || 0, 'read-only prefix mount')} • source=${model.source}`, mountedCount > 0 ? 'ok' : 'neutral', 'Remote clusters or abstractions presently visible through the lazy cross-cluster read fabric.'),
+    createMetricCard('Network Stance', toSentenceCase(model.networkStatus), `${formatCountLabel(model.outerNetwork.observedClusterCount, 'observed cluster')} • mounted=${formatNumber(model.outerNetwork.mountedClusterCount)}`, networkTone, 'How much of the broader Oak Chain this local operator view can currently see.'),
+    createMetricCard('Discovery Plane', model.outerNetwork.discoveryPlane, model.outerNetwork.readFabric, 'neutral', 'Cross-cluster discovery remains separate from consensus and from the local write path.'),
+  );
+
+  localCard.className = `network-local-card is-${localTone}`;
+  localCard.innerHTML = `
+    <div class="network-local-head">
+      <div>
+        <p class="network-kicker">Local Authority</p>
+        <h3>${model.localCluster.displayName}</h3>
+        <p class="network-subtitle">${model.localCluster.authority}</p>
+      </div>
+      <span class="network-status-pill is-${localTone}">${formatStatus(model.localCluster.status)}</span>
+    </div>
+    <div class="network-local-copy">
+      <div class="network-principles">
+        <span class="network-chip is-ok">${model.localCluster.consensusPlane}</span>
+        <span class="network-chip is-info">${model.localCluster.ownedPrefixes}</span>
+        <span class="network-chip is-ok">${model.localCluster.roleLabel}</span>
+      </div>
+      <div class="network-facts">
+        <dl class="network-fact">
+          <dt>Leader</dt>
+          <dd>${model.localCluster.leaderLabel}</dd>
+        </dl>
+        <dl class="network-fact">
+          <dt>Write Rule</dt>
+          <dd>${model.localCluster.writeRule}</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="network-node-cloud">
+      <p class="network-node-cloud-label">Observed validators</p>
+      <div class="network-node-cloud-list">
+        ${model.localCluster.nodes.map((node) => `
+          <span class="network-node-pill ${Number(node?.nodeId) === Number(cluster?.leaderNodeId) ? 'is-leader' : ''}">
+            <span>${formatNodeId(node?.nodeId)}</span>
+            <span class="network-node-role">${node?.role || 'FOLLOWER'}</span>
+          </span>
+        `).join('') || '<span class="network-empty">No validator roster returned.</span>'}
+      </div>
+    </div>
+  `;
+
+  fabricRibbon.innerHTML = `
+    <p class="network-ribbon-kicker">Cross-cluster fabric</p>
+    <p class="hero-value">${mountedCount > 0 ? formatCountLabel(mountedCount, 'neighbor') : 'Local only'}</p>
+    <p class="network-ribbon-detail">${model.outerNetwork.readFabric}</p>
+    <p class="network-ribbon-detail">${model.outerNetwork.writeAuthority}</p>
+  `;
+
+  if (mountedCount > 0) {
+    remoteGrid.replaceChildren(...model.mountedNeighbors.map((neighbor) => {
+      const tone = toneForNetworkStatus(neighbor.status);
+      const card = document.createElement('article');
+      card.className = `network-remote-card is-${tone}`;
+      card.innerHTML = `
+        <p class="network-kicker">Mounted Neighbor</p>
+        <h3>${neighbor.displayName || neighbor.clusterId || 'Remote cluster'}</h3>
+        <p>${neighbor.relation || 'Read-only remote projection'}</p>
+        <div class="network-remote-meta">
+          <span class="network-chip is-${tone}">${toSentenceCase(neighbor.status || 'unknown')}</span>
+          <span class="network-chip is-info">${neighbor.ownedPrefixes || 'external prefixes'}</span>
+          <span class="network-chip is-ok">${neighbor.transport || 'Lazy read fabric'}</span>
+        </div>
+        <p>${neighbor.note || `${formatOptionalCount(neighbor.observedNodeCount)} • remote authority stays outside local consensus.`}</p>
+      `;
+      return card;
+    }));
+  } else {
+    const emptyCard = document.createElement('article');
+    emptyCard.className = 'network-remote-card is-abstract';
+    emptyCard.innerHTML = `
+      <p class="network-kicker">Outer network</p>
+      <h3>Mount horizon not yet open</h3>
+      <p>This node is still behaving as a self-contained local fiefdom. Once remote read mounts are visible, they will appear here without implying shared consensus.</p>
+    `;
+    remoteGrid.replaceChildren(emptyCard);
+  }
+
+  horizon.className = `network-horizon-card is-${networkTone}`;
+  horizon.innerHTML = `
+    <div class="network-horizon-head">
+      <div>
+        <p class="network-kicker">Network Abstraction</p>
+        <h3>${model.outerNetwork.label}</h3>
+      </div>
+      <span class="network-status-pill is-${networkTone}">${toSentenceCase(model.networkStatus)}</span>
+    </div>
+    <div class="network-horizon-body">
+      <div class="network-horizon-copy">
+        <p>${model.outerNetwork.summary}</p>
+        <div class="network-horizon-metadata">
+          <span class="network-chip is-info">${formatCountLabel(model.outerNetwork.observedClusterCount, 'observed cluster')}</span>
+          <span class="network-chip is-ok">${formatCountLabel(model.outerNetwork.mountedClusterCount, 'mounted cluster')}</span>
+          <span class="network-chip is-info">${model.topologyModel}</span>
+        </div>
+      </div>
+      <ul class="network-horizon-list">
+        ${model.outerNetwork.principles.map((principle) => `<li>${principle}</li>`).join('')}
+      </ul>
+    </div>
+  `;
 }
 
 function setText(id, value) {
@@ -420,6 +630,14 @@ async function refresh() {
       gc: runtime.endpoints.gcStatus,
       queueStats: runtime.endpoints.proposalsQueueStats,
     });
+    let network = null;
+    if (runtime.endpoints.network) {
+      try {
+        network = await fetchEndpoint(runtime.endpoints.network);
+      } catch (_error) {
+        network = null;
+      }
+    }
 
     if (Object.keys(data).length === 0) {
       throw new Error(errors[0] || 'No ops endpoints available');
@@ -428,6 +646,7 @@ async function refresh() {
     renderHero(data.summary, data.releaseFlow, data.signals, data.health);
     renderOverview(data.summary, data.releaseFlow, data.signals, data.config, data.gc, data.health);
     renderCluster(data.cluster, data.health);
+    renderNetwork(network, data.cluster, data.health);
     renderReleaseFlow(data.releaseFlow);
     renderSignals(data.signals);
     renderConfig(data.config, data.health);

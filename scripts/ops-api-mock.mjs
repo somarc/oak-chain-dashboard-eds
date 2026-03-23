@@ -1348,6 +1348,56 @@ async function resolveHealth() {
   };
 }
 
+async function resolveNetwork() {
+  const [cluster, health] = await Promise.all([resolveCluster(), resolveHealth()]);
+  const sharding = pick(health, ['sharding'], {});
+  const nodes = Array.isArray(cluster?.nodes) ? cluster.nodes : [];
+  const leaderNode = nodes.find((node) => Number(node?.nodeId) === Number(cluster?.leaderNodeId)) || null;
+  const remoteMountCount = toNum(pick(sharding, ['remoteMountCount'], 0), 0);
+
+  return {
+    topologyModel: 'Aeron fiefdoms + lazy read fabric',
+    networkStatus: remoteMountCount > 0 ? 'observable' : 'local-only',
+    localCluster: {
+      clusterId: String(pick(sharding, ['clusterName'], CLUSTER_ID)),
+      displayName: String(pick(sharding, ['clusterName'], CLUSTER_ID)),
+      roleLabel: 'Authoritative local write scope',
+      authority: 'This Aeron cluster is the local writable authority plane.',
+      consensusPlane: 'Aeron consensus',
+      writeRule: 'Local wallets write here; foreign wallets redirect before queueing.',
+      ownedPrefixes: String(pick(sharding, ['localPrefixes'], 'none')),
+      nodeCount: nodes.length,
+      leaderLabel: leaderNode ? `${leaderNode.nodeId === undefined ? 'Leader' : `Node ${leaderNode.nodeId}`} leads` : 'Leader unresolved',
+      status: String(pick(cluster, ['clusterState'], 'unknown')),
+    },
+    mountedNeighbors: remoteMountCount > 0 ? [{
+      clusterId: 'oak-mounted-b',
+      displayName: 'Mounted shard horizon',
+      relation: 'Lazy read-only remote cluster',
+      ownedPrefixes: '80-ff',
+      observedNodeCount: 3,
+      status: 'visible',
+      transport: 'HTTP segment transfer',
+      note: `${remoteMountCount} remote prefix mounts are projected outside the local Aeron state machine.`,
+    }] : [],
+    outerNetwork: {
+      label: 'Oak Chain beyond the local mount horizon',
+      status: remoteMountCount > 0 ? 'observable' : 'local-only',
+      summary: 'The wider Oak Chain remains a federation of independent Aeron fiefdoms. This dashboard centers the local cluster and treats the rest as a readable horizon, not a shared consensus body.',
+      discoveryPlane: 'Separate control plane',
+      readFabric: remoteMountCount > 0 ? 'Lazy read-only mounts over HTTP segment transfer' : 'No mounted neighbors observed yet',
+      writeAuthority: 'Each cluster writes only its owned prefixes.',
+      observedClusterCount: 1 + (remoteMountCount > 0 ? 1 : 0),
+      mountedClusterCount: remoteMountCount > 0 ? 1 : 0,
+      principles: [
+        'Aeron governs the local writable repository only.',
+        'Cross-cluster reads are lazy and read-only.',
+        'Discovery stays separate from consensus.',
+      ],
+    },
+  };
+}
+
 async function resolveEventsRecent(url) {
   const limit = Number(url.searchParams.get('limit') || 12);
   const recent = await upstreamGet(`/v1/events/recent?limit=${Math.max(1, Math.min(limit, 50))}`);
@@ -1588,6 +1638,53 @@ function handle(req, res) {
         { nodeId: 1, wallet: '0x222...', role: 'LEADER', status: 'ready', reachable: true, lastSeenAt: nowIso() },
         { nodeId: 2, wallet: '0x333...', role: 'FOLLOWER', status: 'ready', reachable: true, lastSeenAt: nowIso() },
       ],
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/network' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      topologyModel: 'Aeron fiefdoms + lazy read fabric',
+      networkStatus: 'observable',
+      localCluster: {
+        clusterId: 'oak-local-a',
+        displayName: 'Oak Local A',
+        roleLabel: 'Authoritative local write scope',
+        authority: 'This Aeron cluster is the local writable authority plane.',
+        consensusPlane: 'Aeron consensus',
+        writeRule: 'Local wallets write here; foreign wallets redirect before queueing.',
+        ownedPrefixes: '00-7f',
+        nodeCount: 3,
+        leaderLabel: 'Node 1 leads',
+        status: 'ACTIVE',
+      },
+      mountedNeighbors: [
+        {
+          clusterId: 'oak-local-b',
+          displayName: 'Oak Local B',
+          relation: 'Lazy read-only remote cluster',
+          ownedPrefixes: '80-ff',
+          observedNodeCount: 3,
+          status: 'visible',
+          transport: 'HTTP segment transfer',
+          note: 'Cluster B remains outside local consensus and is visible through lazy read-only mounts.',
+        },
+      ],
+      outerNetwork: {
+        label: 'Oak Chain beyond the local mount horizon',
+        status: 'observable',
+        summary: 'The wider Oak Chain is shown as a federation of Aeron fiefdoms with a separate discovery plane and a lazy read fabric between them.',
+        discoveryPlane: 'Separate control plane',
+        readFabric: 'Lazy read-only mounts over HTTP segment transfer',
+        writeAuthority: 'Each cluster writes only its owned prefixes.',
+        observedClusterCount: 2,
+        mountedClusterCount: 1,
+        principles: [
+          'Aeron governs the local writable repository only.',
+          'Cross-cluster reads are lazy and read-only.',
+          'Discovery stays separate from consensus.',
+        ],
+      },
     }));
     return;
   }
@@ -2204,6 +2301,10 @@ function handle(req, res) {
       }
       if (path === '/ops/v1/cluster') {
         sendJson(res, 200, envelope(await resolveCluster()));
+        return;
+      }
+      if (path === '/ops/v1/network') {
+        sendJson(res, 200, envelope(await resolveNetwork()));
         return;
       }
       if (path === '/ops/v1/raft') {

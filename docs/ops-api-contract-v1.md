@@ -135,6 +135,67 @@ that cross-cluster read mounts participate in local consensus.
 }
 ```
 
+### 2a) `GET /ops/v1/network`
+
+Purpose: present the local writable Aeron cluster in the center and the rest of
+the Oak Chain as a read/discovery abstraction, not as shared consensus.
+
+`data` shape:
+
+```json
+{
+  "topologyModel": "Aeron fiefdoms + lazy read fabric",
+  "networkStatus": "observable",
+  "localCluster": {
+    "clusterId": "oak-local-a",
+    "displayName": "Oak Local A",
+    "roleLabel": "Authoritative local write scope",
+    "authority": "This Aeron cluster is the local writable authority plane.",
+    "consensusPlane": "Aeron consensus",
+    "writeRule": "Local wallets write here; foreign wallets redirect before queueing.",
+    "ownedPrefixes": "00-7f",
+    "nodeCount": 3,
+    "leaderLabel": "Node 1 leads",
+    "status": "ACTIVE"
+  },
+  "mountedNeighbors": [
+    {
+      "clusterId": "oak-local-b",
+      "displayName": "Oak Local B",
+      "relation": "Lazy read-only remote cluster",
+      "ownedPrefixes": "80-ff",
+      "observedNodeCount": 3,
+      "status": "visible",
+      "transport": "HTTP segment transfer",
+      "note": "Cluster B remains outside local consensus and is visible through lazy read-only mounts."
+    }
+  ],
+  "outerNetwork": {
+    "label": "Oak Chain beyond the local mount horizon",
+    "status": "observable",
+    "summary": "The wider Oak Chain is shown as a federation of Aeron fiefdoms with a separate discovery plane and a lazy read fabric between them.",
+    "discoveryPlane": "Separate control plane",
+    "readFabric": "Lazy read-only mounts over HTTP segment transfer",
+    "writeAuthority": "Each cluster writes only its owned prefixes.",
+    "observedClusterCount": 2,
+    "mountedClusterCount": 1,
+    "principles": [
+      "Aeron governs the local writable repository only.",
+      "Cross-cluster reads are lazy and read-only.",
+      "Discovery stays separate from consensus."
+    ]
+  }
+}
+```
+
+This endpoint is intentionally cartographic and operator-facing:
+
+- `localCluster` is the home fiefdom the dashboard sees directly
+- `mountedNeighbors` are remote clusters or remote-cluster abstractions visible
+  through lazy read mounts
+- `outerNetwork` is a bounded abstraction of the wider Oak Chain, never a claim
+  that the whole network shares one consensus plane
+
 ### 3) `GET /ops/v1/raft`
 
 Purpose: Raft/Aeron runtime metrics normalized for charts.

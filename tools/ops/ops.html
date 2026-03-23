@@ -165,6 +165,7 @@
           <nav class="panel-nav" aria-label="Oak ops panels" role="tablist">
             <button id="tab-overview" class="panel-tab is-active" type="button" data-panel="overview" role="tab" aria-selected="true" aria-controls="panel-overview">Overview</button>
             <button id="tab-cluster" class="panel-tab" type="button" data-panel="cluster" role="tab" aria-selected="false" aria-controls="panel-cluster" tabindex="-1">Cluster</button>
+            <button id="tab-network" class="panel-tab" type="button" data-panel="network" role="tab" aria-selected="false" aria-controls="panel-network" tabindex="-1">Network</button>
             <button id="tab-release" class="panel-tab" type="button" data-panel="release" role="tab" aria-selected="false" aria-controls="panel-release" tabindex="-1">Release Flow</button>
             <button id="tab-signals" class="panel-tab" type="button" data-panel="signals" role="tab" aria-selected="false" aria-controls="panel-signals" tabindex="-1">Signals</button>
             <button id="tab-config" class="panel-tab" type="button" data-panel="config" role="tab" aria-selected="false" aria-controls="panel-config" tabindex="-1">Config</button>
@@ -221,6 +222,29 @@
             <div id="cluster-summary" class="summary-grid"></div>
             <div id="validator-grid" class="validator-grid"></div>
             <p id="cluster-note" class="section-note">Awaiting cluster sample.</p>
+          </section>
+
+          <section id="panel-network" class="panel-section" role="tabpanel" aria-labelledby="tab-network" hidden>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Network Cartography</p>
+                <h2>Local Fiefdom and Wider Oak Chain</h2>
+              </div>
+              <p class="section-meta">Local authority in the center, mounted neighbors at the edge, and the wider network kept explicitly abstract.</p>
+            </div>
+            <div id="network-summary" class="summary-grid"></div>
+            <div class="network-stage">
+              <article id="network-local-cluster" class="network-local-card">
+                <p class="network-empty">Awaiting local cluster sample.</p>
+              </article>
+              <div id="network-fabric-ribbon" class="network-fabric-ribbon">
+                <p class="network-empty">Waiting for sharding posture.</p>
+              </div>
+              <div id="network-remote-grid" class="network-remote-grid"></div>
+            </div>
+            <article id="network-horizon" class="network-horizon-card">
+              <p class="network-empty">Awaiting network abstraction.</p>
+            </article>
           </section>
 
           <section id="panel-release" class="panel-section" role="tabpanel" aria-labelledby="tab-release" hidden>
