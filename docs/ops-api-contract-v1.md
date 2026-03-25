@@ -1,7 +1,7 @@
 # Ops API Contract v1 (EDS Dashboard)
 
 Status: Draft (day-one baseline)
-Last Updated: 2026-03-22
+Last Updated: 2026-03-24
 Owner: Oak Chain Dashboard + Oak Segment Consensus
 
 ## Purpose
@@ -10,10 +10,13 @@ Define a stable, dashboard-facing API contract for `oak-chain-dashboard-eds` fro
 
 This contract is the UI read model and is intentionally separate from raw internal endpoint shapes in `oak-segment-consensus`.
 
+Browser code must consume `/ops/v1/*`. Raw validator `/v1/*` endpoints are upstream source APIs for gateways, CLIs, and operator automation, not a stable UI contract.
+
 ## Scope
 
 - Consumer: EDS dashboard UI (`oak-chain-dashboard-eds`)
 - Producer: edge/gateway BFF (backed by `oak-segment-consensus` APIs)
+- Upstream sources: validator-native `/v1/*` endpoints behind the gateway
 - Versioning base path: `/ops/v1`
 
 ## Non-goals
@@ -21,6 +24,7 @@ This contract is the UI read model and is intentionally separate from raw intern
 - No direct consensus write operations in this contract
 - No server-rendered HTML coupling
 - No dependence on in-process dashboard templates
+- No direct browser dependence on raw validator `/v1/*` routes
 
 ## Transport and Security
 
@@ -28,6 +32,7 @@ This contract is the UI read model and is intentionally separate from raw intern
 - Auth: bearer token or secure session cookie at gateway
 - CORS: enforced at gateway, allowlisted dashboard origins only
 - Cache: short-lived edge caching allowed for read endpoints
+- `/ops/v1/runtime/*` uses the same auth system with stronger operator-only authorization than general dashboard reads.
 
 ## Contract Rules
 
@@ -40,6 +45,8 @@ This contract is the UI read model and is intentionally separate from raw intern
 - `/epochs` endpoints are compatibility overlays only and are deprecated for new operator workflows.
 - Cluster authority is local to one Aeron cluster. Cross-cluster mounts and
   discovery are separate concerns and must not be modeled as shared consensus.
+- Canonical `/ops/v1/*` handlers may compose only governed validator source contracts.
+- Raw validator diagnostics such as `/v1/aeron/*`, `/health/deep`, `/api/metrics`, and `/api/segments/tars` are not upstream dependencies.
 
 ## Standard Response Envelope
 
@@ -297,6 +304,24 @@ cross-cluster sharding posture.
   }
 }
 ```
+
+### 7a) `GET /ops/v1/runtime/*`
+
+Purpose: authenticated operator/dev-ops lane for deep runtime visibility without exposing raw validator diagnostics as the public browser contract.
+
+Endpoints:
+
+- `GET /ops/v1/runtime/aeron`
+- `GET /ops/v1/runtime/media-driver`
+- `GET /ops/v1/runtime/storage`
+- `GET /ops/v1/runtime/blobstore`
+- `GET /ops/v1/runtime/metrics`
+
+Source policy:
+
+- These endpoints are still edge-owned `/ops/v1/*` surfaces.
+- They are composed only from governed validator source routes, primarily `/v1/ops/snapshots/runtime` and `/v1/ops/snapshots/storage`.
+- They require stronger operator-only auth than general dashboard reads.
 
 `sharding` is the contract surface that tells operators whether the node is
 running with:
@@ -718,31 +743,36 @@ Compatibility notes:
 - Events recent: 3-5 seconds or SSE equivalent
 - Transaction detail: on-demand + manual refresh
 
-## Source Mapping (`oak-segment-consensus` -> `/ops/v1`)
+## Source Mapping (validator-native `/v1/*` -> `/ops/v1`)
 
-- `/v1/consensus/status` -> `/ops/v1/overview`, `/ops/v1/transactions/*`
-- `/v1/aeron/cluster-state` -> `/ops/v1/cluster`
-- `/v1/aeron/raft-metrics` -> `/ops/v1/raft`
-- `/v1/aeron/replication-lag` -> `/ops/v1/replication`
-- `/v1/proposals/queue/stats` -> `/ops/v1/queue`
-- `/v1/proposals/queue/stats` -> `/ops/v1/proposals/release-flow`
+This mapping is gateway-owned. Browser code must not call the left-hand routes directly.
+
+- `/v1/consensus/leader` + `/v1/consensus/status` -> `/ops/v1/overview`
+- `/v1/consensus/leader` + `/v1/ops/snapshots/cluster` -> `/ops/v1/cluster`
+- `/v1/ops/snapshots/runtime` -> `/ops/v1/raft`
+- `/v1/ops/snapshots/replication` -> `/ops/v1/replication`
+- `/v1/ops/snapshots/queue` -> `/ops/v1/queue`
 - `/v1/proposals/release-flow` -> `/ops/v1/proposals/release-flow`
 - `/v1/explorer/release-flow` -> `/ops/v1/explorer/release-flow`
-- `/v1/proposals/queue/stats` + `/v1/consensus/status` (+ epoch/priority counters when available) -> `/ops/v1/proposals/epochs` (compatibility overlay; deprecated)
+- `/v1/proposals/epochs` -> `/ops/v1/proposals/epochs` (compatibility overlay; deprecated)
 - `/v1/explorer/epochs` -> `/ops/v1/explorer/epochs` (compatibility overlay; deprecated)
-- `/v1/ops/snapshots/health` + `/health/deep` -> `/ops/v1/health`
+- `/v1/ops/snapshots/health` + `/v1/ops/snapshots/runtime` + `/v1/ops/snapshots/storage` -> `/ops/v1/health`
 - `/v1/events/recent` -> `/ops/v1/events/recent`
 - `/v1/events/stats` -> `/ops/v1/events/stats`
-- `/v1/consensus/status` + `/v1/proposals/queue/stats` -> `/ops/v1/finality`
-- `/api/segments/tars` (+ `/health/deep` for head metadata) -> `/ops/v1/tarmk`
-- `/api/segments/tars` -> `/ops/v1/tar-chain`
+- `/v1/consensus/status` + `/v1/ops/snapshots/queue` -> `/ops/v1/finality`
+- `/v1/ops/snapshots/storage` -> `/ops/v1/tarmk`
+- `/v1/ops/snapshots/storage` -> `/ops/v1/tar-chain`
 - `/v1/blockchain/config` -> `/ops/v1/blockchain/config`
+- `/v1/ops/snapshots/runtime` -> `/ops/v1/runtime/{aeron,media-driver,metrics}`
+- `/v1/ops/snapshots/storage` -> `/ops/v1/runtime/{storage,blobstore}`
 
 ## Backward and Forward Compatibility
 
 - UI must not depend on undocumented fields.
+- Dashboard/browser code must not bypass the gateway to call raw validator `/v1/*` routes directly.
 - Gateway may compose from multiple upstream endpoints.
 - Upstream shape drift is absorbed by gateway adapters, not dashboard blocks.
+- Runtime/operator diagnostics are still served from `/ops/v1/*`, not from raw validator endpoints.
 - Canonical operator surfaces are `/ops/v1/proposals/release-flow` and `/ops/v1/explorer/release-flow`.
 - `/ops/v1/proposals/epochs` and `/ops/v1/explorer/epochs` remain compatibility/deprecated overlays only.
 
@@ -767,6 +797,7 @@ Compatibility notes:
 - Run: `npm run mock:ops`
 - Default URL: `http://127.0.0.1:8787`
 - Serves the `/ops/v1/*` contract for dashboard block development.
+- Mirrors the browser contract rather than exposing validator-native routes directly.
 - Live proxy mode:
   - `OPS_MOCK_MODE=proxy OPS_UPSTREAM_BASE=http://127.0.0.1:8090 npm run mock:ops`
   - Adapts `oak-segment-consensus` endpoint shapes into this contract envelope.

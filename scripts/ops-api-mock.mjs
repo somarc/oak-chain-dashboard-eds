@@ -16,6 +16,60 @@ const CHAIN_MODE =
   || process.env.OAK_CHAIN_MODE
   || process.env.BLOCKCHAIN_MODE
   || 'mock';
+const OPS_API_AUTH_TOKEN = readStringEnv(['OPS_API_AUTH_TOKEN', 'OAK_OPS_API_AUTH_TOKEN'], '');
+const OPS_RUNTIME_AUTH_TOKEN = readStringEnv(
+  ['OPS_RUNTIME_AUTH_TOKEN', 'OAK_OPS_RUNTIME_AUTH_TOKEN'],
+  OPS_API_AUTH_TOKEN,
+);
+const OPS_UPSTREAM_AUTH_TOKEN = readStringEnv(
+  ['OPS_UPSTREAM_AUTH_TOKEN', 'OAK_OPS_UPSTREAM_AUTH_TOKEN'],
+  '',
+);
+const SOURCE_CONTRACT_VERSIONS = Object.freeze({
+  '/v1/consensus/leader': 'consensus.leader.v1',
+  '/v1/consensus/status': 'consensus.status.v1',
+  '/v1/ops/snapshots/health': 'ops.v1',
+  '/v1/ops/snapshots/runtime': 'ops.runtime.v1',
+  '/v1/ops/snapshots/storage': 'ops.storage.v1',
+  '/v1/ops/snapshots/cluster': 'ops.v1',
+  '/v1/ops/snapshots/replication': 'ops.v1',
+  '/v1/ops/snapshots/queue': 'ops.v1',
+  '/v1/proposals/release-flow': 'release-flow.v1',
+  '/v1/proposals/epochs': 'proposal.epoch-overlay.v1',
+  '/v1/explorer/summary': 'explorer.v1',
+  '/v1/events/recent': 'events.recent.v1',
+  '/v1/events/stats': 'events.stats.v1',
+  '/v1/config/osgi': 'config.osgi.v1',
+  '/v1/config/osgi/schema': 'config.osgi.schema.v1',
+  '/v1/config/osgi/sources': 'config.osgi.sources.v1',
+  '/v1/config/osgi/coverage': 'config.osgi.coverage.v1',
+  '/v1/config/osgi/delta': 'config.osgi.delta.v1',
+  '/v1/blockchain/config': 'blockchain.config.v1',
+  '/v1/gc/status': 'gc.status.v1',
+  '/v1/gc/estimate': 'gc.estimate.v1',
+  '/v1/compaction/proposals': 'gc.compaction.proposals.v1',
+  '/v1/fragmentation/metrics': 'fragmentation.metrics.v1',
+  '/v1/fragmentation/top': 'fragmentation.top.v1',
+});
+const FORBIDDEN_UPSTREAM_PREFIXES = Object.freeze([
+  '/v1/aeron/',
+  '/api/',
+  '/health/deep',
+  '/segments/',
+  '/journal.log',
+  '/manifest',
+  '/metrics',
+]);
+
+function readStringEnv(names, fallback = '') {
+  for (const name of names) {
+    const raw = process.env[name];
+    if (raw === undefined || raw === null) continue;
+    const trimmed = String(raw).trim();
+    if (trimmed.length > 0) return trimmed;
+  }
+  return fallback;
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -257,95 +311,92 @@ function shortWallet(wallet) {
   return `${wallet.slice(0, 10)}...${wallet.slice(-8)}`;
 }
 
-function readIntEnv(names, fallback = 0) {
-  for (const name of names) {
-    const raw = process.env[name];
-    if (raw === undefined || raw === null || String(raw).trim() === '') continue;
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return fallback;
-}
-
-function readStringEnv(names, fallback = '') {
-  for (const name of names) {
-    const raw = process.env[name];
-    if (raw === undefined || raw === null) continue;
-    const trimmed = String(raw).trim();
-    if (trimmed.length > 0) return trimmed;
-  }
-  return fallback;
-}
-
-function readBooleanEnv(names, fallback = false) {
-  for (const name of names) {
-    const raw = process.env[name];
-    if (raw === undefined || raw === null || String(raw).trim() === '') continue;
-    return String(raw).trim().toLowerCase() === 'true';
-  }
-  return fallback;
-}
-
 async function upstreamGet(path) {
-  const target = `${UPSTREAM_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-  const response = await fetch(target, { headers: { accept: 'application/json' } });
-  if (!response.ok) {
-    throw new Error(`upstream ${path} HTTP ${response.status}`);
-  }
-  const text = await response.text();
-  return parseJsonSafe(text, {});
+  return upstreamGetSource(path);
 }
 
-async function upstreamGetFromBase(path, baseUrl) {
+function normalizeSourcePath(path) {
+  return String(path || '').split('?')[0];
+}
+
+function assertAllowedUpstreamPath(path) {
+  const normalized = normalizeSourcePath(path);
+  if (FORBIDDEN_UPSTREAM_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+    throw new Error(`upstream path ${normalized} is not allowed for canonical /ops/v1/* composition`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(SOURCE_CONTRACT_VERSIONS, normalized)) {
+    throw new Error(`upstream path ${normalized} is not a governed source contract`);
+  }
+  return normalized;
+}
+
+function validateSourceContract(path, payload) {
+  const normalized = normalizeSourcePath(path);
+  const expected = SOURCE_CONTRACT_VERSIONS[normalized];
+  const actual = pick(payload, ['contractVersion'], null);
+  if (!expected) {
+    return payload;
+  }
+  if (actual !== expected) {
+    throw new Error(`upstream ${normalized} contract mismatch: expected ${expected}, got ${actual || 'missing'}`);
+  }
+  return payload;
+}
+
+function buildUpstreamHeaders() {
+  const headers = { accept: 'application/json' };
+  if (OPS_UPSTREAM_AUTH_TOKEN) {
+    headers.authorization = `Bearer ${OPS_UPSTREAM_AUTH_TOKEN}`;
+  }
+  return headers;
+}
+
+async function fetchUpstreamJson(path, baseUrl = UPSTREAM_BASE) {
+  const normalized = assertAllowedUpstreamPath(path);
   const base = (baseUrl || UPSTREAM_BASE).replace(/\/$/, '');
   const cacheKey = `${base}|${path}`;
   const fallbackCacheKey = `${UPSTREAM_BASE}|${path}`;
   const target = `${base}${path.startsWith('/') ? path : `/${path}`}`;
-  const response = await fetch(target, { headers: { accept: 'application/json' } });
+  const response = await fetch(target, { headers: buildUpstreamHeaders() });
   if (response.status === 429) {
     const now = Date.now();
     const cached = UPSTREAM_CACHE.get(cacheKey) || UPSTREAM_CACHE.get(fallbackCacheKey);
     if (cached && (now - cached.ts) <= UPSTREAM_CACHE_TTL_MS) {
-      return cached.data;
+      return validateSourceContract(normalized, cached.data);
     }
   }
   if (!response.ok) {
     throw new Error(`upstream ${path} HTTP ${response.status}`);
   }
   const text = await response.text();
-  const parsed = parseJsonSafe(text, {});
+  const parsed = validateSourceContract(normalized, parseJsonSafe(text, {}));
   UPSTREAM_CACHE.set(cacheKey, { ts: Date.now(), data: parsed });
   return parsed;
 }
 
-async function upstreamGetText(path) {
-  const target = `${UPSTREAM_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-  const response = await fetch(target, { headers: { accept: 'application/json' } });
-  if (!response.ok) {
-    throw new Error(`upstream ${path} HTTP ${response.status}`);
-  }
-  return response.text();
+async function upstreamGetFromBase(path, baseUrl) {
+  return fetchUpstreamJson(path, baseUrl);
 }
 
-async function upstreamGetUnwrapped(path) {
-  const payload = await upstreamGet(path);
+async function upstreamGetSource(path, baseUrl = UPSTREAM_BASE) {
+  return fetchUpstreamJson(path, baseUrl);
+}
+
+async function upstreamGetUnwrapped(path, baseUrl = UPSTREAM_BASE) {
+  const payload = await upstreamGetSource(path, baseUrl);
   if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'data')) {
     return payload.data ?? payload;
   }
   return payload;
 }
 
-async function upstreamGetSnapshot(path, fallbackPath, baseUrl = UPSTREAM_BASE) {
-  try {
-    const snapshot = await upstreamGetFromBase(path, baseUrl);
-    const data = pick(snapshot, ['data'], null);
-    if (data && typeof data === 'object') {
-      return data;
-    }
-  } catch (_e) {
-    // Fall through to fallback endpoint.
+async function upstreamGetSnapshot(path, baseUrl = UPSTREAM_BASE) {
+  const snapshot = await upstreamGetFromBase(path, baseUrl);
+  const data = pick(snapshot, ['data'], null);
+  if (data && typeof data === 'object') {
+    return data;
   }
-  return upstreamGetFromBase(fallbackPath, baseUrl);
+  return snapshot;
 }
 
 function maxField(records, field) {
@@ -356,21 +407,22 @@ function maxField(records, field) {
 }
 
 async function resolveClusterQueueSnapshot(leaderBase) {
-  const primary = await upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', leaderBase);
+  const primary = await upstreamGetSnapshot('/v1/ops/snapshots/queue', leaderBase);
   let snapshots = [primary];
 
   try {
-    const identities = await upstreamGetFromBase('/v1/aeron/validator-identities', leaderBase);
+    const runtime = await upstreamGetUnwrapped('/v1/ops/snapshots/runtime', leaderBase);
+    const identities = pick(pick(runtime, ['aeron'], {}), ['validatorIdentities'], {});
     const validators = Array.isArray(pick(identities, ['validators'], []))
       ? pick(identities, ['validators'], [])
       : [];
     const urls = validators
-      .map((v) => pick(v, ['url'], null))
-      .filter((v) => typeof v === 'string' && v.length > 0);
+      .map((validator) => pick(validator, ['url'], null))
+      .filter((value) => typeof value === 'string' && value.length > 0);
 
     if (urls.length > 0) {
       const settled = await Promise.allSettled(
-        urls.map((base) => upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', base)),
+        urls.map((base) => upstreamGetSnapshot('/v1/ops/snapshots/queue', base)),
       );
       const fetched = settled
         .filter((result) => result.status === 'fulfilled' && result.value && typeof result.value === 'object')
@@ -386,19 +438,23 @@ async function resolveClusterQueueSnapshot(leaderBase) {
   const merged = { ...primary };
   const monotonicFields = [
     'totalVerifiedCount',
+    'totalVerifiedCountLifetime',
     'totalFinalizedCount',
+    'totalFinalizedCountLifetime',
     'totalProposals',
     'writeProposals',
     'deleteProposals',
     'totalRejectedCount',
+    'totalRejectedCountLifetime',
     'verifierRejectedCount',
     'maxRetryCount',
+    'totalProposalsSent',
+    'totalProposalsSentLifetime',
   ];
   monotonicFields.forEach((field) => {
     merged[field] = maxField(snapshots, field);
   });
 
-  // For live pressure signals, retain the "worst" across validators.
   merged.pendingCount = maxField(snapshots, 'pendingCount');
   merged.unverifiedQueueSize = maxField(snapshots, 'unverifiedQueueSize');
   merged.mempoolPendingCount = maxField(snapshots, 'mempoolPendingCount');
@@ -424,15 +480,16 @@ async function resolveLeaderUpstreamBase() {
       return currentLeader.replace(/\/$/, '');
     }
   } catch (_e) {
-    // Fall through to cluster-state strategy.
+    // Fall through to runtime source snapshot.
   }
   try {
-    const cluster = await upstreamGet('/v1/aeron/cluster-state');
-    const directLeader = pick(cluster, ['currentLeader'], null);
+    const runtime = await upstreamGetUnwrapped('/v1/ops/snapshots/runtime');
+    const aeron = pick(runtime, ['aeron'], {});
+    const directLeader = pick(aeron, ['currentLeader', 'leaderHint'], null);
     if (typeof directLeader === 'string' && directLeader.length > 0) {
       return directLeader.replace(/\/$/, '');
     }
-    const members = pick(cluster, ['members', 'nodes', 'validators'], []);
+    const members = pick(pick(aeron, ['validatorIdentities'], {}), ['validators'], []);
     if (Array.isArray(members)) {
       const leader = members.find((m) => String(pick(m, ['role'], '')).toUpperCase() === 'LEADER');
       const leaderUrl = pick(leader, ['url'], null);
@@ -446,30 +503,13 @@ async function resolveLeaderUpstreamBase() {
   return UPSTREAM_BASE;
 }
 
-function extractBlobStoreFromMalformedDeepHealth(text) {
-  if (typeof text !== 'string' || !text.length) return {};
-  const blobStoreMatch = text.match(/"blobStore"\s*:\s*\{([\s\S]*?)\}\s*,/);
-  if (!blobStoreMatch) return {};
-  const body = blobStoreMatch[1];
-  const typeMatch = body.match(/"type"\s*:\s*"([^"]+)"/i);
-  const statusMatch = body.match(/"status"\s*:\s*"([^"]+)"/i);
-  const gatewayMatch = body.match(/"ipfsGateway"\s*:\s*"([^"]+)"/i);
-  return {
-    blobStore: {
-      type: typeMatch ? typeMatch[1] : null,
-      status: statusMatch ? statusMatch[1] : null,
-      ipfsGateway: gatewayMatch ? gatewayMatch[1] : null,
-    },
-  };
-}
-
 async function resolveOverview() {
   const leaderBase = await resolveLeaderUpstreamBase();
   const [consensus, cluster, queue, replication] = await Promise.all([
     upstreamGet('/v1/consensus/status'),
-    upstreamGetSnapshot('/v1/ops/snapshots/cluster', '/v1/aeron/cluster-state', leaderBase),
-    upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', leaderBase),
-    upstreamGetSnapshot('/v1/ops/snapshots/replication', '/v1/aeron/replication-lag', leaderBase),
+    upstreamGetSnapshot('/v1/ops/snapshots/cluster', leaderBase),
+    upstreamGetSnapshot('/v1/ops/snapshots/queue', leaderBase),
+    upstreamGetSnapshot('/v1/ops/snapshots/replication', leaderBase),
   ]);
 
   const leaderNodeId = pick(cluster, ['leaderNodeId', 'leader', 'leaderId'], 0);
@@ -524,45 +564,43 @@ async function resolveOverview() {
 }
 
 async function resolveHeader() {
-  const [cluster, consensus, healthSnapshot, deepRaw, shallow, blockchainConfig] = await Promise.all([
-    upstreamGetSnapshot('/v1/ops/snapshots/cluster', '/v1/aeron/cluster-state'),
+  const [cluster, consensus, healthSnapshot, runtimeSnapshot, storageSnapshot, blockchainConfig] = await Promise.all([
+    upstreamGetSnapshot('/v1/ops/snapshots/cluster'),
     upstreamGet('/v1/consensus/status'),
-    upstreamGetSnapshot('/v1/ops/snapshots/health', '/health'),
-    upstreamGetText('/health/deep').catch(() => ''),
-    upstreamGet('/health').catch(() => ({})),
+    upstreamGetSnapshot('/v1/ops/snapshots/health'),
+    upstreamGetUnwrapped('/v1/ops/snapshots/runtime').catch(() => ({})),
+    upstreamGetUnwrapped('/v1/ops/snapshots/storage').catch(() => ({})),
     upstreamGet('/v1/blockchain/config').catch(() => ({})),
   ]);
-  let deep = parseJsonSafe(deepRaw, {});
-  if (!deep || Object.keys(deep).length === 0) {
-    deep = extractBlobStoreFromMalformedDeepHealth(deepRaw);
-  }
-
+  const runtimeAeron = pick(runtimeSnapshot, ['aeron'], {});
+  const identities = normalizeValidatorIdentities(pick(runtimeAeron, ['validatorIdentities'], {}));
   const normalizedMembers = normalizeNodeIds(pick(cluster, ['members', 'nodes', 'validators'], []));
   const selfMemberId = toNum(pick(cluster, ['memberId'], pick(cluster, ['leaderNodeId', 'leader'], 0)), 0);
   const role = String(
     pick(cluster, ['role'], pick(consensus, ['currentRole'], 'FOLLOWER')),
   ).toUpperCase();
   const wallet = String(
-    pick(cluster, ['validatorIdentity'], {}).walletAddress
+    pick(findValidatorIdentityForNode({ nodeId: selfMemberId }, identities), ['walletAddress', 'wallet'], null)
+    || pick(cluster, ['validatorIdentity'], {}).walletAddress
     || pick(consensus, ['walletAddress', 'leaderWallet'], null)
     || pick(normalizedMembers.find((m) => toNum(m.nodeId, -1) === selfMemberId), ['walletAddress', 'wallet'], null)
     || pick(normalizedMembers.find((m) => String(pick(m, ['role'], '')).toUpperCase() === 'LEADER'), ['walletAddress', 'wallet'], null)
     || 'unknown'
   );
-  const blobStore = pick(deep, ['blobStore'], {});
+  const blobStore = pick(storageSnapshot, ['blobStore'], {});
   const blobStoreType = String(
-    pick(healthSnapshot, ['blobStoreType'], pick(blobStore, ['type'], 'file')),
+    pick(blobStore, ['type'], pick(healthSnapshot, ['blobStoreType'], 'file')),
   ).toUpperCase();
   const ipfsStatusRaw = String(pick(blobStore, ['status'], pick(healthSnapshot, ['status'], 'unknown')));
   const ipfsEnabled = blobStoreType === 'IPFS';
   const ipfsDaemonStatus = ipfsEnabled ? ipfsStatusRaw.toUpperCase() : 'DISABLED';
   const networkStatus = String(
-    pick(cluster, ['health'], {}).status
-    || pick(shallow, ['clusterStatus'], null)
+    pick(healthSnapshot, ['status'], null)
+    || pick(cluster, ['health'], {}).status
+    || pick(runtimeAeron, ['status'], null)
     || pick(cluster, ['clusterState'], null)
     || 'unknown',
   ).toUpperCase();
-
   const blockchainPayload = pick(blockchainConfig, ['data'], blockchainConfig);
   const resolvedMode = String(
     pick(blockchainPayload, ['mode'], CHAIN_MODE),
@@ -591,7 +629,6 @@ async function resolveHeader() {
     networkStatus,
   };
 }
-
 async function resolveExplorerSummary() {
   return upstreamGetUnwrapped('/v1/explorer/summary');
 }
@@ -607,11 +644,11 @@ function raftLike(cluster) {
 
 async function resolveCluster() {
   const leaderBase = await resolveLeaderUpstreamBase();
-  const [cluster, identitiesPayload] = await Promise.all([
-    upstreamGetSnapshot('/v1/ops/snapshots/cluster', '/v1/aeron/cluster-state', leaderBase),
-    upstreamGetFromBase('/v1/aeron/validator-identities', leaderBase).catch(() => ({ validators: [] })),
+  const [cluster, runtimeSnapshot] = await Promise.all([
+    upstreamGetSnapshot('/v1/ops/snapshots/cluster', leaderBase),
+    upstreamGetUnwrapped('/v1/ops/snapshots/runtime', leaderBase).catch(() => ({})),
   ]);
-  const identities = normalizeValidatorIdentities(identitiesPayload);
+  const identities = normalizeValidatorIdentities(pick(pick(runtimeSnapshot, ['aeron'], {}), ['validatorIdentities'], {}));
   const rawNodes = pick(cluster, ['nodes', 'members', 'validators'], []);
   const nodes = normalizeNodeIds(rawNodes);
   const leaderNode = nodes.find((n) => String(pick(n, ['role'], '')).toUpperCase() === 'LEADER');
@@ -639,9 +676,10 @@ async function resolveCluster() {
 }
 
 async function resolveRaft() {
-  const raft = await upstreamGet('/v1/aeron/raft-metrics');
-  const election = pick(raft, ['electionMetrics'], {});
-  const replication = pick(raft, ['replicationMetrics'], {});
+  const runtime = await upstreamGetUnwrapped('/v1/ops/snapshots/runtime');
+  const raft = pick(pick(runtime, ['aeron'], {}), ['raft'], {});
+  const election = pick(raft, ['electionMetrics'], raft);
+  const replication = pick(raft, ['replicationMetrics'], raft);
   return {
     term: toNum(pick(election, ['currentTerm'], pick(raft, ['term', 'currentTerm'], 0)), 0),
     commitIndex: toNum(pick(raft, ['commitIndex'], 0), 0),
@@ -654,7 +692,7 @@ async function resolveRaft() {
 
 async function resolveReplication() {
   const leaderBase = await resolveLeaderUpstreamBase();
-  const replication = await upstreamGetSnapshot('/v1/ops/snapshots/replication', '/v1/aeron/replication-lag', leaderBase);
+  const replication = await upstreamGetSnapshot('/v1/ops/snapshots/replication', leaderBase);
   const nodes = pick(replication, ['nodes', 'perNode'], []);
   return {
     status: String(pick(replication, ['status'], pick(replication, ['healthy'], false) ? 'ok' : 'degraded')),
@@ -708,29 +746,18 @@ async function resolveProposals() {
     writeTotal + deleteTotal,
   );
   const finalized = toNum(pick(queue, ['totalFinalizedCount'], 0), 0);
-  const finalizedLifetime = toNum(pick(queue, ['totalFinalizedCountLifetime', 'totalFinalizedCount'], 0), 0);
   const verified = Math.max(
     toNum(pick(queue, ['totalVerifiedCount', 'verifiedCount'], 0), 0),
-    0,
-  );
-  const verifiedLifetime = Math.max(
-    toNum(pick(queue, ['totalVerifiedCountLifetime', 'totalVerifiedCount', 'verifiedCount'], 0), 0),
     0,
   );
   const rejected = Math.max(
     toNum(pick(queue, ['totalRejectedCount', 'rejectedCount', 'verifierRejectedCount'], 0), 0),
     0,
   );
-  const rejectedLifetime = Math.max(
-    toNum(pick(queue, ['totalRejectedCountLifetime', 'totalRejectedCount', 'rejectedCount', 'verifierRejectedCount'], 0), 0),
-    0,
-  );
   const unverified = Math.max(
     toNum(pick(queue, ['unverifiedQueueSize'], 0), 0) + toNum(pick(queue, ['pendingCount'], 0), 0),
     0,
   );
-  const totalSentCurrent = toNum(pick(queue, ['totalProposalsSent'], 0), 0);
-  const totalSentLifetime = toNum(pick(queue, ['totalProposalsSentLifetime', 'totalProposalsSent'], 0), 0);
 
   return {
     queuePressure: {
@@ -749,19 +776,10 @@ async function resolveProposals() {
       finalized,
       rejected,
     },
-    statesLifetime: {
-      verified: verifiedLifetime,
-      finalized: finalizedLifetime,
-      rejected: rejectedLifetime,
-    },
     types: {
       write: writeTotal,
       delete: deleteTotal,
       total: totalProposals,
-    },
-    routing: {
-      sentCurrent: totalSentCurrent,
-      sentLifetime: totalSentLifetime,
     },
     // Current upstream queue stats expose per-state totals and per-type totals separately.
     // Per-type state slices are not yet available as first-class counters.
@@ -787,9 +805,6 @@ async function resolveProposals() {
       pendingEpochs: signals.pendingEpochs,
       totalQueued: signals.totalQueuedFromStats !== null ? signals.totalQueuedFromStats : totalProposals,
     },
-    raw: {
-      queueStats: queue,
-    },
   };
 }
 
@@ -801,7 +816,7 @@ async function resolveProposalEpochs() {
       return upstream;
     }
   } catch (_e) {
-    // Fall back to derived payload while upstream endpoint rolls out.
+    // Fall back to derived payload while compatibility overlay converges.
   }
 
   const proposals = await resolveProposals();
@@ -812,63 +827,60 @@ async function resolveProposalEpochs() {
   const currentEpoch = toNum(pick(epochs, ['currentEpoch'], 0), 0);
   const finalizedEpoch = toNum(pick(epochs, ['finalizedEpoch'], 0), 0);
   const pendingEpochs = Math.max(toNum(pick(epochs, ['pendingEpochs'], 0), 0), 0);
-
   const totalVerified = Math.max(toNum(pick(states, ['verified'], 0), 0), 0);
   const totalFinalized = Math.max(toNum(pick(states, ['finalized'], 0), 0), 0);
-  const inFlightVerified = Math.max(totalVerified - totalFinalized, 0);
   const totalRejected = Math.max(toNum(pick(states, ['rejected'], 0), 0), 0);
+  const inFlightVerified = Math.max(totalVerified - totalFinalized, 0);
   const unverified = Math.max(toNum(pick(states, ['unverified'], 0), 0), 0);
   const pendingCarry = Math.max(toNum(pick(queuePressure, ['pending', 'queuePending'], 0), 0), 0);
-
   const nextEpoch = currentEpoch > finalizedEpoch ? finalizedEpoch + 1 : currentEpoch;
 
-  const blocks = [
-    {
-      epoch: finalizedEpoch,
-      status: 'finalized',
-      label: 'Finalized',
-      counts: {
-        unverified: 0,
-        verified: 0,
-        finalized: totalFinalized,
-        rejected: totalRejected,
-      },
-      flowToNext: inFlightVerified,
-    },
-    {
-      epoch: nextEpoch,
-      status: 'next',
-      label: 'Next to be Finalized',
-      counts: {
-        verified: inFlightVerified,
-        unverified: 0,
-        finalized: 0,
-        rejected: 0,
-      },
-      flowToNext: unverified + pendingCarry,
-    },
-    {
-      epoch: currentEpoch,
-      status: 'current',
-      label: 'Current',
-      counts: {
-        unverified: pendingCarry,
-        verified: 0,
-        finalized: 0,
-        rejected: 0,
-      },
-      flowToNext: 0,
-    },
-  ];
-
   return {
+    contractVersion: 'proposal.epoch-overlay.v1',
     currentEpoch,
     finalizedEpoch,
     pendingEpochs,
     epochsUntilFinality: Math.max(toNum(pick(epochs, ['epochsUntilFinality'], 0), 0), 0),
     source: 'aggregate-counters',
     note: 'Epoch blocks are derived from aggregate counters until first-class per-epoch counters are available upstream.',
-    blocks,
+    blocks: [
+      {
+        epoch: finalizedEpoch,
+        status: 'finalized',
+        label: 'Finalized',
+        counts: {
+          unverified: 0,
+          verified: 0,
+          finalized: totalFinalized,
+          rejected: totalRejected,
+        },
+        flowToNext: inFlightVerified,
+      },
+      {
+        epoch: nextEpoch,
+        status: 'next',
+        label: 'Next to be Finalized',
+        counts: {
+          unverified: 0,
+          verified: inFlightVerified,
+          finalized: 0,
+          rejected: 0,
+        },
+        flowToNext: unverified + pendingCarry,
+      },
+      {
+        epoch: currentEpoch,
+        status: 'current',
+        label: 'Current',
+        counts: {
+          unverified: pendingCarry,
+          verified: 0,
+          finalized: 0,
+          rejected: 0,
+        },
+        flowToNext: 0,
+      },
+    ],
   };
 }
 
@@ -940,84 +952,90 @@ async function resolveProposalReleaseFlow() {
       return upstream;
     }
   } catch (_e) {
-    // Fall back to aggregate queue stats if the canonical upstream route is unavailable.
+    // Fall back to aggregate queue stats if the canonical route is unavailable.
   }
 
-  let proposals = {};
-  try {
-    proposals = await resolveProposals();
-  } catch (_e) {
-    proposals = { queuePressure: {}, states: {}, epochs: {}, raw: { queueStats: {} } };
-  }
-
-  const epochs = pick(proposals, ['epochs'], {});
-  const rawQueue = pick(pick(proposals, ['raw'], {}), ['queueStats'], {}) || {};
+  const leaderBase = await resolveLeaderUpstreamBase();
+  const queue = await resolveClusterQueueSnapshot(leaderBase).catch(() => ({}));
+  const stageCounts = pick(queue, ['runtimeStageCounts'], {});
+  const signals = resolveQueueSignals(queue);
 
   return {
     contractVersion: 'proposal.release-flow.v1',
-    source: 'mock-fallback-aggregate-counters',
+    source: 'proxy-fallback-aggregate-counters',
     schedulerModel: 'adaptive-capacity',
-    releaseMode: pick(rawQueue, ['releaseMode'], 'adaptive-active'),
-    requiredConfirmations: toNum(pick(rawQueue, ['requiredConfirmations'], 1), 1),
-    priorityDirectReleaseEnabled: Boolean(pick(rawQueue, ['priorityDirectReleaseEnabled'], false)),
-    currentEpoch: toNum(pick(epochs, ['currentEpoch'], 0), 0),
-    finalizedEpoch: toNum(pick(epochs, ['finalizedEpoch'], 0), 0),
-    epochsUntilFinality: toNum(pick(epochs, ['epochsUntilFinality'], 0), 0),
+    releaseMode: pick(queue, ['releaseMode'], 'adaptive-active'),
+    requiredConfirmations: toNum(pick(queue, ['requiredConfirmations'], 1), 1),
+    priorityDirectReleaseEnabled: Boolean(pick(queue, ['priorityDirectReleaseEnabled'], false)),
+    currentEpoch: toNum(pick(queue, ['currentEpoch'], 0), 0),
+    finalizedEpoch: toNum(pick(queue, ['finalizedEpoch'], 0), 0),
+    epochsUntilFinality: toNum(pick(queue, ['epochsUntilFinality'], 0), 0),
     releaseStages: {
       unverifiedMempoolCount: Math.max(
-        toNum(pick(rawQueue, ['mempoolPendingCount', 'unverifiedQueueSize'], 0), 0),
-        toNum(pick(rawQueue, ['pendingCount'], 0), 0),
+        toNum(pick(stageCounts, ['unverifiedMempoolCount'], 0), 0),
+        toNum(pick(queue, ['mempoolPendingCount', 'unverifiedQueueSize', 'pendingCount'], 0), 0),
       ),
-      verifiedPackingBufferCount: toNum(pick(rawQueue, ['verifiedPackingBufferCount'], 0), 0),
+      verifiedPackingBufferCount: Math.max(
+        toNum(pick(stageCounts, ['verifiedPackingBufferCount', 'adaptiveVerifiedPackingBufferCount'], 0), 0),
+        toNum(pick(queue, ['verifiedPackingBufferCount', 'adaptiveVerifiedPackingBufferCount'], 0), 0),
+      ),
       releaseReadyProposalCount: Math.max(
-        toNum(pick(rawQueue, ['releaseReadyProposalCount'], 0), 0),
-        toNum(pick(rawQueue, ['batchQueueSize'], 0), 0),
+        toNum(pick(stageCounts, ['releaseReadyProposalCount'], 0), 0),
+        toNum(pick(queue, ['releaseReadyProposalCount', 'batchQueueSize'], 0), 0),
       ),
-      releaseReadyBatchCount: toNum(pick(rawQueue, ['releaseReadyBatchCount'], 0), 0),
-      backpressureOverflowProposalCount: toNum(pick(rawQueue, ['backpressureOverflowProposalCount'], 0), 0),
-      backpressureOverflowBatchCount: toNum(pick(rawQueue, ['backpressureOverflowBatchCount'], 0), 0),
+      releaseReadyBatchCount: Math.max(
+        toNum(pick(stageCounts, ['releaseReadyBatchCount'], 0), 0),
+        toNum(pick(queue, ['releaseReadyBatchCount'], 0), 0),
+      ),
+      backpressureOverflowProposalCount: Math.max(
+        toNum(pick(stageCounts, ['backpressureOverflowProposalCount'], 0), 0),
+        toNum(pick(queue, ['backpressureOverflowProposalCount'], 0), 0),
+      ),
+      backpressureOverflowBatchCount: Math.max(
+        toNum(pick(stageCounts, ['backpressureOverflowBatchCount'], 0), 0),
+        toNum(pick(queue, ['backpressureOverflowBatchCount'], 0), 0),
+      ),
       verifiedResidentProposalCount: Math.max(
-        toNum(pick(rawQueue, ['verifiedResidentProposalCount'], 0), 0),
-        Math.max(
-          toNum(pick(rawQueue, ['totalVerifiedCount'], 0), 0) - toNum(pick(rawQueue, ['totalFinalizedCount'], 0), 0),
-          0,
-        ),
+        toNum(pick(stageCounts, ['verifiedResidentProposalCount'], 0), 0),
+        toNum(pick(queue, ['verifiedResidentProposalCount'], 0), 0),
       ),
     },
     governor: {
-      state: pick(rawQueue, ['adaptiveReleaseGovernorState'], 'UNKNOWN'),
-      action: pick(rawQueue, ['adaptiveReleaseAction'], 'UNKNOWN'),
-      reasonCodes: pick(rawQueue, ['adaptiveReleaseReasonCodes'], []),
-      backpressureActive: Boolean(pick(rawQueue, ['backpressureActive'], false)),
-      backpressurePendingCount: toNum(pick(rawQueue, ['backpressurePendingCount'], 0), 0),
-      backpressureMaxPending: toNum(pick(rawQueue, ['backpressureMaxPending'], 0), 0),
-      pendingOldestMs: toNum(pick(rawQueue, ['backpressurePendingOldestMs'], 0), 0),
-      pendingStalledMs: toNum(pick(rawQueue, ['backpressurePendingStalledMs'], 0), 0),
+      state: pick(queue, ['adaptiveReleaseGovernorState'], 'UNKNOWN'),
+      action: pick(queue, ['adaptiveReleaseAction'], 'UNKNOWN'),
+      reasonCodes: pick(queue, ['adaptiveReleaseReasonCodes'], []),
+      backpressureActive: Boolean(pick(queue, ['backpressureActive'], false)),
+      backpressurePendingCount: signals.backpressurePending,
+      backpressureMaxPending: toNum(pick(queue, ['backpressureMaxPending'], 0), 0),
+      pendingOldestMs: toNum(pick(queue, ['backpressurePendingOldestMs'], 0), 0),
+      pendingStalledMs: toNum(pick(queue, ['backpressurePendingStalledMs'], 0), 0),
     },
     packing: {
-      walletCount: toNum(pick(rawQueue, ['adaptivePackingWalletCount'], 0), 0),
-      queuedProposalCountTotal: toNum(pick(rawQueue, ['adaptivePackingQueuedProposalCountTotal'], 0), 0),
-      drainedProposalCountTotal: toNum(pick(rawQueue, ['adaptivePackingDrainedProposalCountTotal'], 0), 0),
-      createdBatchCountTotal: toNum(pick(rawQueue, ['adaptivePackingCreatedBatchCountTotal'], 0), 0),
+      walletCount: toNum(pick(queue, ['adaptivePackingWalletCount'], 0), 0),
+      queuedProposalCountTotal: toNum(pick(queue, ['adaptivePackingQueuedProposalCountTotal'], 0), 0),
+      drainedProposalCountTotal: toNum(pick(queue, ['adaptivePackingDrainedProposalCountTotal'], 0), 0),
+      createdBatchCountTotal: toNum(pick(queue, ['adaptivePackingCreatedBatchCountTotal'], 0), 0),
     },
     overflow: {
-      separateBufferEnabled: true,
-      bufferedBatchCountTotal: toNum(pick(rawQueue, ['backpressureOverflowBufferedBatchCountTotal'], 0), 0),
-      bufferedProposalCountTotal: toNum(pick(rawQueue, ['backpressureOverflowBufferedProposalCountTotal'], 0), 0),
-      promotedBatchCountTotal: toNum(pick(rawQueue, ['backpressureOverflowPromotedBatchCountTotal'], 0), 0),
-      promotedProposalCountTotal: toNum(pick(rawQueue, ['backpressureOverflowPromotedProposalCountTotal'], 0), 0),
+      separateBufferEnabled: Boolean(
+        pick(stageCounts, ['backpressureOverflowSeparateBufferEnabled'], true),
+      ),
+      bufferedBatchCountTotal: toNum(pick(queue, ['backpressureOverflowBufferedBatchCountTotal'], 0), 0),
+      bufferedProposalCountTotal: toNum(pick(queue, ['backpressureOverflowBufferedProposalCountTotal'], 0), 0),
+      promotedBatchCountTotal: toNum(pick(queue, ['backpressureOverflowPromotedBatchCountTotal'], 0), 0),
+      promotedProposalCountTotal: toNum(pick(queue, ['backpressureOverflowPromotedProposalCountTotal'], 0), 0),
     },
     throughput: {
-      priorityProposalsSent: toNum(pick(rawQueue, ['priorityProposalsSent'], 0), 0),
-      batchedProposalsSent: toNum(pick(rawQueue, ['batchedProposalsSent'], 0), 0),
-      totalProposalsSent: toNum(pick(rawQueue, ['totalProposalsSent'], 0), 0),
-      totalFinalizedCount: toNum(pick(rawQueue, ['totalFinalizedCount'], 0), 0),
-      totalRejectedCount: toNum(pick(rawQueue, ['totalRejectedCount'], 0), 0),
+      priorityProposalsSent: toNum(pick(queue, ['priorityProposalsSent'], 0), 0),
+      batchedProposalsSent: toNum(pick(queue, ['batchedProposalsSent'], 0), 0),
+      totalProposalsSent: toNum(pick(queue, ['totalProposalsSent'], 0), 0),
+      totalFinalizedCount: toNum(pick(queue, ['totalFinalizedCount'], 0), 0),
+      totalRejectedCount: toNum(pick(queue, ['totalRejectedCount'], 0), 0),
     },
     epochCompatibility: {
       source: 'compatibility-epoch-overlay',
-      pendingEpochs: toNum(pick(epochs, ['pendingEpochs'], 0), 0),
-      pendingEpochStats: pick(rawQueue, ['pendingEpochStats'], null),
+      pendingEpochs: signals.pendingEpochs,
+      pendingEpochStats: pick(queue, ['pendingEpochStats'], null),
       replacementEndpoint: '/ops/v1/proposals/release-flow',
     },
     note: 'Adaptive verified-release view derived from aggregate queue stats fallback.',
@@ -1027,7 +1045,7 @@ async function resolveProposalReleaseFlow() {
 async function resolveSignals() {
   const [overview, queue, replication, health] = await Promise.all([
     resolveOverview().catch(() => ({})),
-    resolveQueue().catch(() => ({})),
+    resolveProposalsQueueStats().catch(() => ({})),
     resolveReplication().catch(() => ({})),
     resolveHealth().catch(() => ({})),
   ]);
@@ -1065,7 +1083,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 2000,
       criticalThreshold: 8000,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Queued proposals waiting for processing.',
     }),
     buildSignal({
@@ -1076,7 +1094,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 2000,
       criticalThreshold: 8000,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Unverified proposal backlog.',
     }),
     buildSignal({
@@ -1087,7 +1105,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 2000,
       criticalThreshold: 8000,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Sender backlog currently under backpressure management.',
     }),
     buildSignal({
@@ -1098,7 +1116,7 @@ async function resolveSignals() {
       unit: 'ms',
       warnThreshold: 250,
       criticalThreshold: 1000,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Average time proposals wait before verifier processing.',
     }),
     buildSignal({
@@ -1109,7 +1127,7 @@ async function resolveSignals() {
       unit: 'ms',
       warnThreshold: 2000,
       criticalThreshold: 10000,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Worst observed verifier queue wait.',
     }),
     buildSignal({
@@ -1120,7 +1138,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 1,
       criticalThreshold: 10,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Verifier processing errors observed.',
     }),
     buildSignal({
@@ -1131,7 +1149,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 200,
       criticalThreshold: 1000,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Pending durability acknowledgements.',
     }),
     buildSignal({
@@ -1142,7 +1160,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 1,
       criticalThreshold: 5,
-      source: '/v1/proposals/queue/stats',
+      source: '/v1/ops/snapshots/queue',
       description: 'Ack timeout retries observed in active window.',
     }),
     buildSignal({
@@ -1153,7 +1171,7 @@ async function resolveSignals() {
       unit: 'ms',
       warnThreshold: 1000,
       criticalThreshold: 5000,
-      source: '/v1/aeron/replication-lag',
+      source: '/v1/ops/snapshots/replication',
       description: 'Worst observed lag among replicas.',
     }),
     buildSignal({
@@ -1164,7 +1182,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 1,
       criticalThreshold: 2,
-      source: '/v1/aeron/replication-lag',
+      source: '/v1/ops/snapshots/replication',
       description: 'Replica nodes currently reporting degraded replication.',
     }),
     buildSignal({
@@ -1175,7 +1193,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 1,
       criticalThreshold: 10,
-      source: '/health/deep',
+      source: '/v1/ops/snapshots/runtime',
       description: 'Media driver reported error events.',
     }),
     buildSignal({
@@ -1186,7 +1204,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 1,
       criticalThreshold: 10,
-      source: '/health/deep',
+      source: '/v1/ops/snapshots/runtime',
       description: 'Media driver timeout events.',
     }),
     buildSignal({
@@ -1197,7 +1215,7 @@ async function resolveSignals() {
       unit: 'count',
       warnThreshold: 1,
       criticalThreshold: 10,
-      source: '/health/deep',
+      source: '/v1/ops/snapshots/runtime',
       description: 'Backpressure events tracked by media driver.',
     }),
     buildSignal({
@@ -1208,28 +1226,8 @@ async function resolveSignals() {
       unit: 'percent',
       warnThreshold: 80,
       criticalThreshold: 90,
-      source: '/health/deep',
+      source: '/v1/ops/snapshots/storage',
       description: 'Validator disk usage percentage.',
-    }),
-    buildSignal({
-      id: 'api.rate_limit_exceeded_total',
-      label: 'Rate Limit Exceeded',
-      category: 'api',
-      value: null,
-      unit: 'count',
-      source: 'missing-upstream-counter',
-      description: 'Add first-class rate-limit counters upstream to enable this signal.',
-      available: false,
-    }),
-    buildSignal({
-      id: 'queue.backpressure_timeout_total',
-      label: 'Backpressure Timeouts',
-      category: 'queue',
-      value: null,
-      unit: 'count',
-      source: 'missing-upstream-counter',
-      description: 'Expose sender backpressure timeout counter upstream for full observability.',
-      available: false,
     }),
   ];
 
@@ -1250,7 +1248,7 @@ async function resolveSignals() {
 
 async function resolveDurability() {
   const leaderBase = await resolveLeaderUpstreamBase();
-  const queue = await upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats', leaderBase);
+  const queue = await upstreamGetSnapshot('/v1/ops/snapshots/queue', leaderBase);
   return {
     status: 'ok',
     pendingAcks: toNum(pick(queue, ['persistencePendingChanges'], 0), 0),
@@ -1260,149 +1258,62 @@ async function resolveDurability() {
 }
 
 async function resolveHealth() {
-  const [opsHealth, shallow, deepRaw] = await Promise.all([
-    upstreamGetSnapshot('/v1/ops/snapshots/health', '/health').catch(() => ({})),
-    upstreamGet('/health'),
-    upstreamGetText('/health/deep').catch(() => ''),
+  const [opsHealth, runtimeSnapshot, storageSnapshot] = await Promise.all([
+    upstreamGetSnapshot('/v1/ops/snapshots/health').catch(() => ({})),
+    upstreamGetUnwrapped('/v1/ops/snapshots/runtime').catch(() => ({})),
+    upstreamGetUnwrapped('/v1/ops/snapshots/storage').catch(() => ({})),
   ]);
-  let deep = parseJsonSafe(deepRaw, {});
-  if (!deep || Object.keys(deep).length === 0) {
-    deep = extractBlobStoreFromMalformedDeepHealth(deepRaw);
-  }
-  const deepCluster = pick(deep, ['cluster'], {});
-  const deepDisk = pick(deep, ['diskSpace'], {});
-  const deepNodeStore = pick(deep, ['nodeStore'], {});
-  const deepMedia = pick(deep, ['mediaDriver'], {});
-  const deepConsensus = pick(deep, ['consensus'], {});
-  const deepClients = pick(deep, ['clients'], {});
-  const deepBlob = pick(deep, ['blobStore'], {});
-  const deepSharding = pick(deep, ['sharding'], {});
-  const snapshotSharding = pick(opsHealth, ['sharding'], {});
+  const runtimeAeron = pick(runtimeSnapshot, ['aeron'], {});
+  const runtimeMedia = pick(runtimeSnapshot, ['mediaDriver'], {});
+  const runtimeValidator = pick(runtimeSnapshot, ['validator'], {});
+  const storageDisk = pick(storageSnapshot, ['diskSpace'], {});
+  const storageNodeStore = pick(storageSnapshot, ['nodeStore'], {});
+  const storageBlob = pick(storageSnapshot, ['blobStore'], {});
   return {
-    status: String(pick(opsHealth, ['status'], pick(shallow, ['status'], pick(deep, ['success'], false) ? 'healthy' : 'degraded')),
-    ).toLowerCase(),
+    status: String(pick(opsHealth, ['status'], 'degraded')).toLowerCase(),
     checks: {
-      cluster: String(pick(opsHealth, ['status'], pick(deepCluster, ['status'], 'unknown'))),
-      storage: String(pick(deepNodeStore, ['status'], pick(deepDisk, ['status'], 'unknown'))),
-      network: String(pick(shallow, ['clusterStatus'], 'unknown')),
-      api: String(pick(shallow, ['status'], 'unknown')),
+      cluster: String(pick(opsHealth, ['status'], pick(runtimeAeron, ['status'], 'unknown'))),
+      storage: String(pick(storageNodeStore, ['status'], pick(storageDisk, ['status'], 'unknown'))),
+      network: String(pick(runtimeAeron, ['status'], 'unknown')),
+      api: String(pick(opsHealth, ['status'], 'unknown')),
     },
     deep: {
       cluster: {
-        status: String(pick(deepCluster, ['status'], 'unknown')),
-        reachableCount: toNum(pick(deepCluster, ['reachableCount'], 0), 0),
-        totalMembers: toNum(pick(deepCluster, ['totalMembers'], 0), 0),
-        quorumSize: toNum(pick(deepCluster, ['quorumSize'], 0), 0),
+        status: String(pick(runtimeAeron, ['status'], 'unknown')),
+        reachableCount: toNum(pick(runtimeAeron, ['reachableValidators'], pick(opsHealth, ['reachableCount'], 0)), 0),
+        totalMembers: toNum(pick(runtimeAeron, ['totalMembers'], pick(opsHealth, ['totalMembers'], 0)), 0),
+        quorumSize: toNum(pick(runtimeAeron, ['quorumSize'], pick(opsHealth, ['quorumSize'], 0)), 0),
       },
       diskSpace: {
-        status: String(pick(deepDisk, ['status'], 'unknown')),
-        usagePercent: toNum(pick(deepDisk, ['usagePercent'], 0), 0),
-        usableGb: toNum(pick(deepDisk, ['usableGb'], 0), 0),
+        status: String(pick(storageDisk, ['status'], 'unknown')),
+        usagePercent: toNum(pick(storageDisk, ['usagePercent'], 0), 0),
+        usableGb: toNum(pick(storageDisk, ['usableGb'], 0), 0),
       },
       mediaDriver: {
-        status: String(pick(deepMedia, ['status'], 'unknown')),
-        healthStatus: String(pick(deepMedia, ['healthStatus'], 'unknown')),
-        errorCount: toNum(pick(deepMedia, ['errorCount'], 0), 0),
-        timeoutCount: toNum(pick(deepMedia, ['timeoutCount'], 0), 0),
-        backpressureCount: toNum(pick(deepMedia, ['backpressureCount'], 0), 0),
+        status: String(pick(runtimeMedia, ['status'], 'unknown')),
+        healthStatus: String(pick(runtimeMedia, ['healthStatus'], 'unknown')),
+        errorCount: toNum(pick(runtimeMedia, ['errorCount'], 0), 0),
+        timeoutCount: toNum(pick(runtimeMedia, ['timeoutCount'], 0), 0),
+        backpressureCount: toNum(pick(runtimeMedia, ['backpressureCount'], 0), 0),
       },
       consensus: {
-        status: String(pick(deepConsensus, ['status'], 'unknown')),
-        mode: String(pick(deepConsensus, ['mode'], 'unknown')),
-        role: String(pick(deepConsensus, ['role'], 'unknown')),
-        term: toNum(pick(deepConsensus, ['term'], 0), 0),
-        epoch: toNum(pick(deepConsensus, ['epoch'], 0), 0),
+        status: String(pick(runtimeAeron, ['status'], 'unknown')),
+        mode: String(pick(runtimeAeron, ['consensusType'], 'unknown')),
+        role: String(pick(runtimeAeron, ['currentRole'], 'unknown')),
+        term: toNum(pick(runtimeAeron, ['currentTerm'], 0), 0),
+        epoch: toNum(pick(runtimeAeron, ['currentEpoch'], 0), 0),
       },
       clients: {
-        status: String(pick(deepClients, ['status'], 'unknown')),
-        registeredClients: toNum(pick(deepClients, ['registeredClients'], 0), 0),
-        registeredValidators: toNum(pick(deepClients, ['registeredValidators'], 0), 0),
+        status: 'UP',
+        registeredClients: toNum(pick(runtimeValidator, ['registeredClients'], 0), 0),
+        registeredValidators: toNum(pick(runtimeValidator, ['registeredValidators'], 0), 0),
       },
       blobStore: {
-        type: String(pick(deepBlob, ['type'], 'unknown')).toUpperCase(),
-        status: String(pick(deepBlob, ['status'], 'unknown')).toUpperCase(),
-        cidMappingAvailable: Boolean(pick(deepBlob, ['cidMappingAvailable'], false)),
-        ipfsGateway: pick(deepBlob, ['ipfsGateway'], null),
+        type: String(pick(storageBlob, ['type'], 'unknown')).toUpperCase(),
+        status: String(pick(storageBlob, ['status'], 'unknown')).toUpperCase(),
+        cidMappingAvailable: Boolean(pick(storageBlob, ['cidMappingAvailable'], false)),
+        ipfsGateway: pick(storageBlob, ['ipfsGateway'], null),
       },
-    },
-    sharding: {
-      proofHarness: readStringEnv(['OPS_SHARDING_PROOF_HARNESS', 'OAK_SHARDING_PROOF_HARNESS'], '3x2-local'),
-      clusterName: readStringEnv(['OPS_SHARDING_CLUSTER_NAME', 'OAK_CLUSTER_NAME'], 'oak-local-a'),
-      runtimeRoot: readStringEnv(['OPS_SHARDING_RUNTIME_ROOT', 'CLUSTER_RUNTIME_ROOT'], '~/oak-chain/3x2/cluster-a'),
-      httpBasePort: readIntEnv(['OPS_SHARDING_HTTP_BASE_PORT', 'OAK_VALIDATOR_HTTP_BASE_PORT'], 8090),
-      aeronClusterBasePort: readIntEnv(['OPS_SHARDING_AERON_BASE_PORT', 'AERON_CLUSTER_BASE_PORT'], 9000),
-      mediaDriverDirBase: readStringEnv(['OPS_SHARDING_MEDIA_DRIVER_DIR_BASE', 'AERON_DIR_BASE'], '~/oak-chain/3x2/cluster-a/aeron-media'),
-      enabled: Boolean(pick(snapshotSharding, ['enabled'], pick(deepSharding, ['enabled'], false))),
-      localPrefixes: String(pick(snapshotSharding, ['localPrefixes'], pick(deepSharding, ['localPrefixes'], 'none'))),
-      remoteMountCount: toNum(
-        pick(snapshotSharding, ['remoteMountCount'], pick(deepSharding, ['remoteMountCount'], 0)),
-        0,
-      ),
-      authoritativeStoreSeparated: Boolean(
-        pick(
-          snapshotSharding,
-          ['authoritativeStoreSeparated'],
-          pick(deepSharding, ['authoritativeStoreSeparated'], false),
-        ),
-      ),
-      crossClusterMountsReadOnly: readBooleanEnv(
-        ['OPS_SHARDING_CROSS_CLUSTER_READ_ONLY', 'OAK_SHARDING_CROSS_CLUSTER_READ_ONLY'],
-        true,
-      ),
-      crossClusterMountsOutsideAeron: readBooleanEnv(
-        ['OPS_SHARDING_CROSS_CLUSTER_OUTSIDE_AERON', 'OAK_SHARDING_CROSS_CLUSTER_OUTSIDE_AERON'],
-        true,
-      ),
-    },
-  };
-}
-
-async function resolveNetwork() {
-  const [cluster, health] = await Promise.all([resolveCluster(), resolveHealth()]);
-  const sharding = pick(health, ['sharding'], {});
-  const nodes = Array.isArray(cluster?.nodes) ? cluster.nodes : [];
-  const leaderNode = nodes.find((node) => Number(node?.nodeId) === Number(cluster?.leaderNodeId)) || null;
-  const remoteMountCount = toNum(pick(sharding, ['remoteMountCount'], 0), 0);
-
-  return {
-    topologyModel: 'Aeron fiefdoms + lazy read fabric',
-    networkStatus: remoteMountCount > 0 ? 'observable' : 'local-only',
-    localCluster: {
-      clusterId: String(pick(sharding, ['clusterName'], CLUSTER_ID)),
-      displayName: String(pick(sharding, ['clusterName'], CLUSTER_ID)),
-      roleLabel: 'Authoritative local write scope',
-      authority: 'This Aeron cluster is the local writable authority plane.',
-      consensusPlane: 'Aeron consensus',
-      writeRule: 'Local wallets write here; foreign wallets redirect before queueing.',
-      ownedPrefixes: String(pick(sharding, ['localPrefixes'], 'none')),
-      nodeCount: nodes.length,
-      leaderLabel: leaderNode ? `${leaderNode.nodeId === undefined ? 'Leader' : `Node ${leaderNode.nodeId}`} leads` : 'Leader unresolved',
-      status: String(pick(cluster, ['clusterState'], 'unknown')),
-    },
-    mountedNeighbors: remoteMountCount > 0 ? [{
-      clusterId: 'oak-mounted-b',
-      displayName: 'Mounted shard horizon',
-      relation: 'Lazy read-only remote cluster',
-      ownedPrefixes: '80-ff',
-      observedNodeCount: 3,
-      status: 'visible',
-      transport: 'HTTP segment transfer',
-      note: `${remoteMountCount} remote prefix mounts are projected outside the local Aeron state machine.`,
-    }] : [],
-    outerNetwork: {
-      label: 'Oak Chain beyond the local mount horizon',
-      status: remoteMountCount > 0 ? 'observable' : 'local-only',
-      summary: 'The wider Oak Chain remains a federation of independent Aeron fiefdoms. This dashboard centers the local cluster and treats the rest as a readable horizon, not a shared consensus body.',
-      discoveryPlane: 'Separate control plane',
-      readFabric: remoteMountCount > 0 ? 'Lazy read-only mounts over HTTP segment transfer' : 'No mounted neighbors observed yet',
-      writeAuthority: 'Each cluster writes only its owned prefixes.',
-      observedClusterCount: 1 + (remoteMountCount > 0 ? 1 : 0),
-      mountedClusterCount: remoteMountCount > 0 ? 1 : 0,
-      principles: [
-        'Aeron governs the local writable repository only.',
-        'Cross-cluster reads are lazy and read-only.',
-        'Discovery stays separate from consensus.',
-      ],
     },
   };
 }
@@ -1448,7 +1359,7 @@ async function resolveTransactionsSummary() {
 async function resolveFinality() {
   const [consensus, queue] = await Promise.all([
     upstreamGet('/v1/consensus/status'),
-    upstreamGetSnapshot('/v1/ops/snapshots/queue', '/v1/proposals/queue/stats'),
+    upstreamGetSnapshot('/v1/ops/snapshots/queue'),
   ]);
   const signals = resolveQueueSignals(queue);
   return {
@@ -1463,19 +1374,19 @@ async function resolveFinality() {
       : toNum(pick(queue, ['totalProposals', 'writeProposals'], 0), 0),
     backpressurePending: signals.backpressurePending,
     totalFinalized: toNum(pick(queue, ['totalFinalizedCount'], 0), 0),
-    totalFinalizedLifetime: toNum(pick(queue, ['totalFinalizedCountLifetime', 'totalFinalizedCount'], 0), 0),
   };
 }
 
 async function resolveTarData() {
-  const tarFiles = await upstreamGet('/api/segments/tars');
+  const storage = await upstreamGetUnwrapped('/v1/ops/snapshots/storage');
+  const tarFiles = pick(storage, ['tarFiles'], []);
   return Array.isArray(tarFiles) ? tarFiles : [];
 }
 
 async function resolveTarmkGrowth() {
-  const [tarFiles, deepHealth] = await Promise.all([
+  const [tarFiles, storageSnapshot] = await Promise.all([
     resolveTarData(),
-    upstreamGet('/health/deep').catch(() => ({})),
+    upstreamGetUnwrapped('/v1/ops/snapshots/storage').catch(() => ({})),
   ]);
   const sizes = tarFiles.map((t) => toNum(t.size, 0)).filter((s) => s >= 0);
   const totalSizeBytes = sizes.reduce((sum, n) => sum + n, 0);
@@ -1492,7 +1403,7 @@ async function resolveTarmkGrowth() {
     : packingEfficiencyPct >= 50
       ? 'Moderate packing efficiency'
       : 'Low packing efficiency';
-  const fileStore = pick(deepHealth, ['fileStore'], {});
+  const fileStore = pick(storageSnapshot, ['fileStore'], {});
   return {
     tarFileCount,
     segmentCount,
@@ -1551,13 +1462,110 @@ async function resolveTransactionDetail(transactionId) {
   };
 }
 
-async function resolveBlockchainConfig() {
-  const payload = await upstreamGet('/v1/blockchain/config');
-  const unwrapped = pick(payload, ['data'], null);
-  if (unwrapped && typeof unwrapped === 'object' && pick(unwrapped, ['mode'], null)) {
-    return unwrapped;
+async function resolveNetwork() {
+  const [health, cluster] = await Promise.all([
+    resolveHealth().catch(() => ({})),
+    resolveCluster().catch(() => ({ nodes: [] })),
+  ]);
+  const nodes = Array.isArray(pick(cluster, ['nodes'], [])) ? pick(cluster, ['nodes'], []) : [];
+  return {
+    status: String(pick(health, ['status'], 'unknown')),
+    api: String(pick(pick(health, ['checks'], {}), ['api'], 'unknown')),
+    cluster: String(pick(pick(health, ['checks'], {}), ['cluster'], 'unknown')),
+    storage: String(pick(pick(health, ['checks'], {}), ['storage'], 'unknown')),
+    nodeCount: nodes.length,
+    reachableNodes: nodes.filter((node) => Boolean(pick(node, ['reachable'], false))).length,
+  };
+}
+
+async function resolveRuntimeAeron() {
+  const runtime = await upstreamGetUnwrapped('/v1/ops/snapshots/runtime');
+  return pick(runtime, ['aeron'], {});
+}
+
+async function resolveRuntimeMediaDriver() {
+  const runtime = await upstreamGetUnwrapped('/v1/ops/snapshots/runtime');
+  return pick(runtime, ['mediaDriver'], {});
+}
+
+async function resolveRuntimeStorage() {
+  return upstreamGetUnwrapped('/v1/ops/snapshots/storage');
+}
+
+async function resolveRuntimeBlobStore() {
+  const storage = await resolveRuntimeStorage();
+  return pick(storage, ['blobStore'], {});
+}
+
+async function resolveRuntimeMetrics() {
+  const runtime = await upstreamGetUnwrapped('/v1/ops/snapshots/runtime');
+  return pick(runtime, ['metrics'], {});
+}
+
+function isRuntimeLane(path) {
+  return String(path || '').startsWith('/ops/v1/runtime/');
+}
+
+function readBearerToken(headerValue) {
+  if (typeof headerValue !== 'string') return null;
+  const match = headerValue.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+}
+
+function requiredTokensForPath(path) {
+  if (isRuntimeLane(path)) {
+    const tokens = [];
+    if (OPS_RUNTIME_AUTH_TOKEN) tokens.push(OPS_RUNTIME_AUTH_TOKEN);
+    if (!OPS_RUNTIME_AUTH_TOKEN && OPS_API_AUTH_TOKEN) tokens.push(OPS_API_AUTH_TOKEN);
+    return tokens;
   }
-  return payload;
+
+  const tokens = [];
+  if (OPS_API_AUTH_TOKEN) tokens.push(OPS_API_AUTH_TOKEN);
+  if (OPS_RUNTIME_AUTH_TOKEN && OPS_RUNTIME_AUTH_TOKEN !== OPS_API_AUTH_TOKEN) {
+    tokens.push(OPS_RUNTIME_AUTH_TOKEN);
+  }
+  return tokens;
+}
+
+function authorizeRequest(req, res, path) {
+  const requiredTokens = requiredTokensForPath(path);
+  if (requiredTokens.length === 0) {
+    return true;
+  }
+
+  const provided = readBearerToken(req.headers.authorization);
+  if (!provided) {
+    sendJson(res, 401, {
+      version: 'v1',
+      generatedAt: nowIso(),
+      error: {
+        code: 'UNAUTHORIZED',
+        message: isRuntimeLane(path)
+          ? 'Bearer token required for /ops/v1/runtime/*'
+          : 'Bearer token required for /ops/v1/*',
+        retryable: false,
+      },
+    });
+    return false;
+  }
+
+  if (!requiredTokens.includes(provided)) {
+    sendJson(res, 403, {
+      version: 'v1',
+      generatedAt: nowIso(),
+      error: {
+        code: 'FORBIDDEN',
+        message: isRuntimeLane(path)
+          ? 'Operator token required for /ops/v1/runtime/*'
+          : 'Provided token is not permitted for /ops/v1/*',
+        retryable: false,
+      },
+    });
+    return false;
+  }
+
+  return true;
 }
 
 function sendJson(res, status, payload) {
@@ -1610,6 +1618,10 @@ function handle(req, res) {
     return;
   }
 
+  if (!authorizeRequest(req, res, path)) {
+    return;
+  }
+
   if (path === '/ops/v1/overview' && MODE === 'static') {
     sendJson(res, 200, envelope({
       status: 'healthy',
@@ -1629,10 +1641,69 @@ function handle(req, res) {
       validator: { nodeId: 0, role: 'LEADER', label: 'Validator 0 LEADER' },
       binaries: { type: 'IPFS', label: 'Binaries IPFS' },
       ipfs: { daemonStatus: 'UP', enabled: true, gateway: 'http://127.0.0.1:8080/ipfs/' },
-      mode: String(CHAIN_MODE).toLowerCase(),
+      mode: 'mock',
       clusterWallet: '0xb677f46bf164d6b3c62fc1b643c3a294466bbc9d',
       clusterWalletShort: '0xb677f46b...466bbc9d',
       networkStatus: 'HEALTHY',
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/network' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      status: 'healthy',
+      api: 'UP',
+      cluster: 'UP',
+      storage: 'UP',
+      nodeCount: 3,
+      reachableNodes: 3,
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/explorer/summary' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      contractVersion: 'explorer.v1',
+      generatedAtMs: Date.now(),
+      cluster: {
+        consensusType: 'aeron-cluster',
+        role: 'LEADER',
+        isLeader: true,
+        currentLeader: 'http://localhost:8090',
+        currentTerm: 1,
+        currentEpoch: 1002,
+        ethereumEpoch: 1000,
+        nodeCount: 3,
+        quorum: 2,
+        reachableValidators: 3,
+        clusterState: 'HEALTHY',
+      },
+      queue: {
+        compact: {
+          queuePending: 0,
+          pendingCount: 0,
+          batchQueueSize: 0,
+          mempoolPendingCount: 0,
+          verified: 0,
+          finalized: 0,
+          gap: 0,
+          rejected: 0,
+          backpressurePending: 0,
+          backpressurePendingRaw: 0,
+          backpressureMax: 10000,
+          backpressureActive: false,
+          releaseMode: 'adaptive-active',
+          requiredConfirmations: 1,
+          verifiedResidentProposalCount: 0,
+          releaseReadyProposalCount: 0,
+          backpressureOverflowProposalCount: 0,
+          adaptiveReleaseGovernorState: 'HEALTHY',
+          adaptiveReleaseAction: 'DIRECT',
+          currentEpoch: 1002,
+          finalizedEpoch: 1000,
+          epochsUntilFinality: 2,
+        },
+      },
     }));
     return;
   }
@@ -1647,53 +1718,6 @@ function handle(req, res) {
         { nodeId: 1, wallet: '0x222...', role: 'LEADER', status: 'ready', reachable: true, lastSeenAt: nowIso() },
         { nodeId: 2, wallet: '0x333...', role: 'FOLLOWER', status: 'ready', reachable: true, lastSeenAt: nowIso() },
       ],
-    }));
-    return;
-  }
-
-  if (path === '/ops/v1/network' && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      topologyModel: 'Aeron fiefdoms + lazy read fabric',
-      networkStatus: 'observable',
-      localCluster: {
-        clusterId: 'oak-local-a',
-        displayName: 'Oak Local A',
-        roleLabel: 'Authoritative local write scope',
-        authority: 'This Aeron cluster is the local writable authority plane.',
-        consensusPlane: 'Aeron consensus',
-        writeRule: 'Local wallets write here; foreign wallets redirect before queueing.',
-        ownedPrefixes: '00-7f',
-        nodeCount: 3,
-        leaderLabel: 'Node 1 leads',
-        status: 'ACTIVE',
-      },
-      mountedNeighbors: [
-        {
-          clusterId: 'oak-local-b',
-          displayName: 'Oak Local B',
-          relation: 'Lazy read-only remote cluster',
-          ownedPrefixes: '80-ff',
-          observedNodeCount: 3,
-          status: 'visible',
-          transport: 'HTTP segment transfer',
-          note: 'Cluster B remains outside local consensus and is visible through lazy read-only mounts.',
-        },
-      ],
-      outerNetwork: {
-        label: 'Oak Chain beyond the local mount horizon',
-        status: 'observable',
-        summary: 'The wider Oak Chain is shown as a federation of Aeron fiefdoms with a separate discovery plane and a lazy read fabric between them.',
-        discoveryPlane: 'Separate control plane',
-        readFabric: 'Lazy read-only mounts over HTTP segment transfer',
-        writeAuthority: 'Each cluster writes only its owned prefixes.',
-        observedClusterCount: 2,
-        mountedClusterCount: 1,
-        principles: [
-          'Aeron governs the local writable repository only.',
-          'Cross-cluster reads are lazy and read-only.',
-          'Discovery stays separate from consensus.',
-        ],
-      },
     }));
     return;
   }
@@ -1749,19 +1773,11 @@ function handle(req, res) {
       backpressureMaxPending: 10000,
       backpressureActive: false,
       backpressurePendingCount: 0,
-      backpressurePendingRawCount: 0,
       backpressureStats: 'BackpressureManager[sent=12000, acked=12000, pending=0, max=10000, active=false]',
       persistencePendingChanges: 0,
-      persistenceAsyncEnabled: true,
-      persistenceFlushCount: 120,
-      persistenceFlushAvgMs: 35,
-      persistenceFlushLastMs: 41,
-      verifierAttemptCount: 12000,
-      verifierSuccessCount: 12000,
       verifierErrorCount: 0,
       verifierQueueWaitMaxMs: 2,
       verifierQueueWaitAvgMs: 0,
-      processedCount: 12000,
       writeProposals: 12000,
       totalFinalizedCount: 12000,
       pendingEpochStats: 'Current Epoch: 1002, Pending Epochs: 0, Pending Proposals: 0, Total Queued: 12000, Total Finalized: 12000, Batches Created: 480',
@@ -1786,19 +1802,10 @@ function handle(req, res) {
         finalized: 9440,
         rejected: 24,
       },
-      statesLifetime: {
-        verified: 19698,
-        finalized: 19440,
-        rejected: 31,
-      },
       types: {
         write: 12186,
         delete: 88,
         total: 12274,
-      },
-      routing: {
-        sentCurrent: 12274,
-        sentLifetime: 24274,
       },
       stateByType: {
         write: {
@@ -1826,97 +1833,23 @@ function handle(req, res) {
     return;
   }
 
-  if (path === '/ops/v1/proposals/epochs' && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      currentEpoch: 1057,
-      finalizedEpoch: 1055,
-      pendingEpochs: 3,
-      epochsUntilFinality: 2,
-      source: 'aggregate-counters',
-      note: 'Epoch blocks are derived from aggregate counters until first-class per-epoch counters are available upstream.',
-      blocks: [
-        {
-          epoch: 1055,
-          status: 'finalized',
-          label: 'Finalized',
-          counts: { unverified: 0, verified: 0, finalized: 9440, rejected: 24 },
-          flowToNext: 258,
-        },
-        {
-          epoch: 1056,
-          status: 'next',
-          label: 'Next to be Finalized',
-          counts: { unverified: 0, verified: 258, finalized: 0, rejected: 0 },
-          flowToNext: 2488,
-        },
-        {
-          epoch: 1057,
-          status: 'current',
-          label: 'Current',
-          counts: { unverified: 2488, verified: 0, finalized: 0, rejected: 0 },
-          flowToNext: 0,
-        },
-      ],
-    }));
-    return;
-  }
-
   if ((path === '/ops/v1/proposals/release-flow' || path === '/ops/v1/explorer/release-flow') && MODE === 'static') {
     sendJson(res, 200, envelope(staticProposalReleaseFlow()));
     return;
   }
 
-  if (path === '/ops/v1/explorer/summary' && MODE === 'static') {
+  if (path === '/ops/v1/proposals/epochs' && MODE === 'static') {
     sendJson(res, 200, envelope({
-      contractVersion: 'explorer.v1',
-      generatedAtMs: Date.now(),
-      cluster: {
-        consensusType: 'aeron-cluster',
-        role: 'LEADER',
-        isLeader: true,
-        currentLeader: 'http://localhost:8090',
-        currentTerm: 1,
-        currentEpoch: 1002,
-        ethereumEpoch: 1000,
-        nodeCount: 3,
-        quorum: 2,
-        reachableValidators: 3,
-        clusterState: 'HEALTHY',
-      },
-      queue: {
-        compact: {
-          queuePending: 0,
-          pendingCount: 0,
-          batchQueueSize: 0,
-          mempoolPendingCount: 0,
-          verified: 0,
-          finalized: 0,
-          gap: 0,
-          rejected: 0,
-          backpressurePending: 0,
-          backpressurePendingRaw: 0,
-          backpressureMax: 10000,
-          backpressureActive: false,
-          releaseMode: 'adaptive-active',
-          requiredConfirmations: 1,
-          verifiedResidentProposalCount: 0,
-          releaseReadyProposalCount: 0,
-          backpressureOverflowProposalCount: 0,
-          adaptiveReleaseGovernorState: 'HEALTHY',
-          adaptiveReleaseAction: 'DIRECT',
-          currentEpoch: 1002,
-          finalizedEpoch: 1000,
-          epochsUntilFinality: 2,
-        },
-      },
-      identities: {
-        validatorWalletAddress: '0x8db9d1b73b5a4f479424947cd191ce0406378422',
-        clusterWalletAddress: '0xa99855cd6281db6aecd416c3b4ead5ca2ad49d83',
-        registeredClients: 0,
-        registeredValidators: 1,
-        reachableValidators: 3,
-        clusterNodeCount: 3,
-      },
+      contractVersion: 'proposal.epoch-overlay.v1',
+      currentEpoch: 1057,
+      finalizedEpoch: 1055,
+      pendingEpochs: 2,
+      epochsUntilFinality: 2,
+      blocks: [
+        { epoch: 1055, status: 'finalized', label: 'Finalized', counts: { unverified: 0, verified: 0, finalized: 9440, rejected: 24 }, flowToNext: 258 },
+        { epoch: 1056, status: 'next', label: 'Next to be Finalized', counts: { unverified: 0, verified: 258, finalized: 0, rejected: 0 }, flowToNext: 2488 },
+        { epoch: 1057, status: 'current', label: 'Current', counts: { unverified: 2488, verified: 0, finalized: 0, rejected: 0 }, flowToNext: 0 },
+      ],
     }));
     return;
   }
@@ -1924,7 +1857,7 @@ function handle(req, res) {
   if (path === '/ops/v1/signals' && MODE === 'static') {
     sendJson(res, 200, envelope({
       status: 'ok',
-      summary: { critical: 0, warn: 0, ok: 4, unknown: 2 },
+      summary: { critical: 0, warn: 0, ok: 4, unknown: 0 },
       categories: ['cluster', 'queue', 'durability', 'storage'],
       signals: [
         buildSignal({
@@ -1947,7 +1880,7 @@ function handle(req, res) {
           unit: 'count',
           warnThreshold: 2000,
           criticalThreshold: 8000,
-          source: '/v1/proposals/queue/stats',
+          source: '/v1/ops/snapshots/queue',
           description: 'Queued proposals waiting for processing.',
         }),
         buildSignal({
@@ -1958,7 +1891,7 @@ function handle(req, res) {
           unit: 'count',
           warnThreshold: 200,
           criticalThreshold: 1000,
-          source: '/v1/proposals/queue/stats',
+          source: '/v1/ops/snapshots/queue',
           description: 'Pending durability acknowledgements.',
         }),
         buildSignal({
@@ -1969,77 +1902,11 @@ function handle(req, res) {
           unit: 'percent',
           warnThreshold: 80,
           criticalThreshold: 90,
-          source: '/health/deep',
+          source: '/v1/ops/snapshots/storage',
           description: 'Validator disk usage percentage.',
-        }),
-        buildSignal({
-          id: 'api.rate_limit_exceeded_total',
-          label: 'Rate Limit Exceeded',
-          category: 'api',
-          value: null,
-          unit: 'count',
-          source: 'missing-upstream-counter',
-          description: 'Add first-class rate-limit counters upstream to enable this signal.',
-          available: false,
-        }),
-        buildSignal({
-          id: 'queue.backpressure_timeout_total',
-          label: 'Backpressure Timeouts',
-          category: 'queue',
-          value: null,
-          unit: 'count',
-          source: 'missing-upstream-counter',
-          description: 'Expose sender backpressure timeout counter upstream for full observability.',
-          available: false,
         }),
       ],
       generatedAt: nowIso(),
-    }));
-    return;
-  }
-
-  if (path === '/ops/v1/config/osgi' && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      contractVersion: 'config.osgi.v1',
-      generatedAtMs: Date.now(),
-      components: {
-        proposalQueueTuning: {
-          release_mode: 'adaptive-active',
-          required_confirmations: 1,
-          priority_direct_release_enabled: false,
-          max_pending_messages: 10000,
-        },
-      },
-    }));
-    return;
-  }
-
-  if (path === '/ops/v1/config/osgi/coverage' && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      contractVersion: 'config.osgi.coverage.v1',
-      generatedAtMs: Date.now(),
-      summary: {
-        knownTunables: 89,
-        exposedTunables: 89,
-        missingTunables: 0,
-        extraExposedTunables: 0,
-        coveragePercent: 100,
-      },
-      missing: [],
-      extra: [],
-    }));
-    return;
-  }
-
-  if (path === '/ops/v1/config/osgi/sources' && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      contractVersion: 'config.osgi.sources.v1',
-      generatedAtMs: Date.now(),
-      sources: {
-        proposalQueueTuning: 'system-properties',
-        blockchainTuning: 'env-or-system-properties',
-        runtimeUiTuning: 'system-properties',
-      },
     }));
     return;
   }
@@ -2083,40 +1950,6 @@ function handle(req, res) {
     return;
   }
 
-  if (path === '/ops/v1/gc/estimate' && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      reclaimableSegmentCount: 0,
-      reclaimableSizeBytes: 0,
-      reclaimableSizeMB: 0,
-      reclaimablePercentage: '0.00',
-      totalSegmentCount: 2,
-      totalSizeBytes: 24576,
-      totalSizeMB: 0,
-      estimatedCostUSDC: '0.0000',
-      reclaimableByTarFile: {},
-    }));
-    return;
-  }
-
-  if (path.startsWith('/ops/v1/gc/account/') && MODE === 'static') {
-    sendJson(res, 200, envelope({
-      pendingDebt: 0,
-      executedDebt: 0,
-      writesBlocked: false,
-    }));
-    return;
-  }
-
-  if (path === '/ops/v1/compaction/proposals' && MODE === 'static') {
-    sendJson(res, 200, envelope({ proposals: [] }));
-    return;
-  }
-
-  if (path === '/ops/v1/fragmentation/metrics' && MODE === 'static') {
-    sendJson(res, 200, envelope({ totalEntities: 0, entities: [] }));
-    return;
-  }
-
   if (path === '/ops/v1/durability' && MODE === 'static') {
     sendJson(res, 200, envelope({
       status: 'ok',
@@ -2136,13 +1969,103 @@ function handle(req, res) {
         network: 'pass',
         api: 'pass',
       },
-      sharding: {
-        enabled: true,
-        localPrefixes: '00-7f',
-        remoteMountCount: 1,
-        authoritativeStoreSeparated: true,
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/runtime/aeron' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      status: 'UP',
+      consensusType: 'aeron-cluster',
+      currentRole: 'LEADER',
+      isLeader: true,
+      currentLeader: 'http://localhost:8090',
+      currentEpoch: 1002,
+      currentTerm: 42,
+      reachableValidators: 3,
+      totalMembers: 3,
+      quorumSize: 2,
+      validatorIdentities: {
+        validators: [
+          { nodeId: 0, role: 'LEADER', url: 'http://localhost:8090', walletAddress: '0x111...' },
+          { nodeId: 1, role: 'FOLLOWER', url: 'http://localhost:8092', walletAddress: '0x222...' },
+        ],
+      },
+      raft: {
+        currentTerm: 42,
+        currentEpoch: 1002,
+        reachableValidators: 3,
+        totalFollowers: 2,
       },
     }));
+    return;
+  }
+
+  if (path === '/ops/v1/runtime/media-driver' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      status: 'UP',
+      healthStatus: 'HEALTHY',
+      errorCount: 0,
+      timeoutCount: 0,
+      backpressureCount: 0,
+      freeSpaceMB: 512,
+      hasCrashed: false,
+      forceBootstrap: false,
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/runtime/storage' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      storePath: '/tmp/oak-store',
+      fileStore: { status: 'UP', latestHead: 'head-123' },
+      nodeStore: { status: 'UP', rootExists: true },
+      diskSpace: { status: 'UP', usagePercent: '42.5', usableGb: '64.0' },
+      blobStore: { type: 'ipfs', status: 'UP', cidMappingAvailable: true, ipfsGateway: 'http://127.0.0.1:8080/ipfs/' },
+      tarFiles: [
+        { name: 'data00000a.tar', size: 31597056, sizeFormatted: '30.1 MB', segmentCount: 1616, created: nowIso() },
+      ],
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/runtime/blobstore' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      type: 'ipfs',
+      status: 'UP',
+      cidMappingAvailable: true,
+      ipfsGateway: 'http://127.0.0.1:8080/ipfs/',
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/runtime/metrics' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      consensus: { role: 'LEADER', healthy: true, reachableValidators: 3 },
+      replication: { healthy: true, replicationLag: 0 },
+      validator: { registeredClients: 1, registeredValidators: 3, storePath: '/tmp/oak-store' },
+      ipfsPolicy: { acceptedEnterpriseCid: 11, rejectedUnknownCid: 0 },
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/config/osgi' && MODE === 'static') {
+    sendJson(res, 200, envelope({ contractVersion: 'config.osgi.v1', values: {} }));
+    return;
+  }
+
+  if (path === '/ops/v1/config/osgi/schema' && MODE === 'static') {
+    sendJson(res, 200, envelope({ contractVersion: 'config.osgi.schema.v1', schema: {} }));
+    return;
+  }
+
+  if (path === '/ops/v1/config/osgi/sources' && MODE === 'static') {
+    sendJson(res, 200, envelope({ contractVersion: 'config.osgi.sources.v1', sources: {} }));
+    return;
+  }
+
+  if (path === '/ops/v1/config/osgi/coverage' && MODE === 'static') {
+    sendJson(res, 200, envelope({ contractVersion: 'config.osgi.coverage.v1', coverage: {} }));
     return;
   }
 
@@ -2187,7 +2110,6 @@ function handle(req, res) {
       pendingEpochs: 3,
       totalQueued: 12186,
       totalFinalized: 9698,
-      totalFinalizedLifetime: 19698,
     }));
     return;
   }
@@ -2227,55 +2149,49 @@ function handle(req, res) {
 
   if (path === '/ops/v1/blockchain/config' && MODE === 'static') {
     sendJson(res, 200, envelope({
-      mode: CHAIN_MODE,
-      network: CHAIN_MODE === 'sepolia' ? 'Sepolia Testnet' : CHAIN_MODE === 'mainnet' ? 'Ethereum Mainnet' : 'Mock (Simulated)',
-      chainId: CHAIN_MODE === 'sepolia' ? 11155111 : CHAIN_MODE === 'mainnet' ? 1 : 0,
-      contractAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0',
-      rpcUrl: CHAIN_MODE === 'mock' ? '' : 'https://sepolia.infura.io/v3/***',
-      requiresMetaMask: CHAIN_MODE !== 'mock',
-      useTestnet: CHAIN_MODE === 'sepolia',
-      displayName: CHAIN_MODE === 'sepolia' ? '✅ SEPOLIA TESTNET' : CHAIN_MODE === 'mainnet' ? '🔴 MAINNET' : '🎭 MOCK MODE',
-      badgeColor: CHAIN_MODE === 'sepolia' ? '#10b981' : CHAIN_MODE === 'mainnet' ? '#ef4444' : '#fbbf24',
-      configSource: 'env-or-system-properties',
-      gasModel: {
-        source: 'measured-sepolia-baseline',
-        gasPriceGwei: 3,
-        writeGasUnitsStandard: 74534,
-        writeGasUnitsExpress: 74534,
-        writeGasUnitsPriority: 74534,
-      },
-      tiers: {
-        STANDARD: {
-          tier: 0,
-          maxDelay: '13 min',
-          baseFeeWei: '5000000000000000',
-          gasUnits: 74534,
-          gasPriceGwei: 3,
-          estimatedGasFeeWei: '223602000000000',
-          estimatedTotalWei: '5223602000000000',
-          estimatedCost: '~0.005224 ETH',
-        },
-        EXPRESS: {
-          tier: 1,
-          maxDelay: '6.5 min',
-          baseFeeWei: '10000000000000000',
-          gasUnits: 74534,
-          gasPriceGwei: 3,
-          estimatedGasFeeWei: '223602000000000',
-          estimatedTotalWei: '10223602000000000',
-          estimatedCost: '~0.010224 ETH',
-        },
-        PRIORITY: {
-          tier: 2,
-          maxDelay: '45 sec',
-          baseFeeWei: '20000000000000000',
-          gasUnits: 74534,
-          gasPriceGwei: 3,
-          estimatedGasFeeWei: '223602000000000',
-          estimatedTotalWei: '20223602000000000',
-          estimatedCost: '~0.020224 ETH',
-        },
-      },
+      contractVersion: 'blockchain.config.v1',
+      mode: 'mock',
+      network: 'Mock (Simulated)',
+      chainId: 0,
+      contractAddress: '',
+      rpcUrl: '',
+      requiresMetaMask: false,
+      useTestnet: false,
+      displayName: 'MOCK MODE',
+      badgeColor: '#fbbf24',
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/gc/estimate' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      contractVersion: 'gc.estimate.v1',
+      reclaimableSegmentCount: 0,
+      reclaimableSizeBytes: 0,
+      reclaimableSizeMB: 0,
+      reclaimablePercentage: '0.00',
+      totalSegmentCount: 1617,
+      totalSizeBytes: 31628800,
+      totalSizeMB: 30,
+      estimatedCostUSDC: '0.00',
+      reclaimableByTarFile: {},
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/compaction/proposals' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      contractVersion: 'gc.compaction.proposals.v1',
+      proposals: [],
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/fragmentation/metrics' && MODE === 'static') {
+    sendJson(res, 200, envelope({
+      contractVersion: 'fragmentation.metrics.v1',
+      totalEntities: 0,
+      entities: [],
     }));
     return;
   }
@@ -2304,16 +2220,16 @@ function handle(req, res) {
         sendJson(res, 200, envelope(await resolveHeader()));
         return;
       }
+      if (path === '/ops/v1/network') {
+        sendJson(res, 200, envelope(await resolveNetwork()));
+        return;
+      }
       if (path === '/ops/v1/explorer/summary') {
         sendJson(res, 200, envelope(await resolveExplorerSummary()));
         return;
       }
       if (path === '/ops/v1/cluster') {
         sendJson(res, 200, envelope(await resolveCluster()));
-        return;
-      }
-      if (path === '/ops/v1/network') {
-        sendJson(res, 200, envelope(await resolveNetwork()));
         return;
       }
       if (path === '/ops/v1/raft') {
@@ -2340,12 +2256,12 @@ function handle(req, res) {
         sendJson(res, 200, envelope(await resolveProposals()));
         return;
       }
-      if (path === '/ops/v1/proposals/release-flow' || path === '/ops/v1/explorer/release-flow') {
-        sendJson(res, 200, envelope(await resolveProposalReleaseFlow()));
-        return;
-      }
       if (path === '/ops/v1/proposals/epochs') {
         sendJson(res, 200, envelope(await resolveProposalEpochs()));
+        return;
+      }
+      if (path === '/ops/v1/proposals/release-flow' || path === '/ops/v1/explorer/release-flow') {
+        sendJson(res, 200, envelope(await resolveProposalReleaseFlow()));
         return;
       }
       if (path === '/ops/v1/durability') {
@@ -2354,6 +2270,26 @@ function handle(req, res) {
       }
       if (path === '/ops/v1/health') {
         sendJson(res, 200, envelope(await resolveHealth()));
+        return;
+      }
+      if (path === '/ops/v1/runtime/aeron') {
+        sendJson(res, 200, envelope(await resolveRuntimeAeron()));
+        return;
+      }
+      if (path === '/ops/v1/runtime/media-driver') {
+        sendJson(res, 200, envelope(await resolveRuntimeMediaDriver()));
+        return;
+      }
+      if (path === '/ops/v1/runtime/storage') {
+        sendJson(res, 200, envelope(await resolveRuntimeStorage()));
+        return;
+      }
+      if (path === '/ops/v1/runtime/blobstore') {
+        sendJson(res, 200, envelope(await resolveRuntimeBlobStore()));
+        return;
+      }
+      if (path === '/ops/v1/runtime/metrics') {
+        sendJson(res, 200, envelope(await resolveRuntimeMetrics()));
         return;
       }
       if (path === '/ops/v1/events/recent') {
@@ -2388,17 +2324,16 @@ function handle(req, res) {
         sendJson(res, 200, envelope(await upstreamGetUnwrapped('/v1/config/osgi/delta')));
         return;
       }
+      if (path === '/ops/v1/blockchain/config') {
+        sendJson(res, 200, envelope(await upstreamGetUnwrapped('/v1/blockchain/config')));
+        return;
+      }
       if (path === '/ops/v1/gc/status') {
         sendJson(res, 200, envelope(await upstreamGetUnwrapped('/v1/gc/status')));
         return;
       }
       if (path === '/ops/v1/gc/estimate') {
         sendJson(res, 200, envelope(await upstreamGetUnwrapped('/v1/gc/estimate')));
-        return;
-      }
-      if (path.startsWith('/ops/v1/gc/account/')) {
-        const wallet = path.substring('/ops/v1/gc/account/'.length);
-        sendJson(res, 200, envelope(await upstreamGetUnwrapped(`/v1/gc/account/${wallet}`)));
         return;
       }
       if (path === '/ops/v1/compaction/proposals') {
@@ -2419,10 +2354,6 @@ function handle(req, res) {
       }
       if (path === '/ops/v1/tar-chain') {
         sendJson(res, 200, envelope(await resolveTarChain()));
-        return;
-      }
-      if (path === '/ops/v1/blockchain/config') {
-        sendJson(res, 200, envelope(await resolveBlockchainConfig()));
         return;
       }
       if (path.startsWith('/ops/v1/transactions/')) {
