@@ -8,7 +8,7 @@ import {
   getRunnerRuntimeConfig,
 } from '../../scripts/ops-runtime-config.js';
 
-const EVENT_LIMIT = 18;
+const EVENT_LIMIT = 10;
 const GROUP_ORDER = ['runtime', 'phases', 'coverage', 'load', 'soak'];
 const opsRuntime = getOpsRuntimeConfig();
 const runnerRuntime = getRunnerRuntimeConfig();
@@ -112,6 +112,21 @@ function shorten(value) {
   if (!text) return '--';
   if (text.length <= 16) return text;
   return `${text.slice(0, 8)}...${text.slice(-6)}`;
+}
+
+function truncateMiddle(value, max = 28) {
+  const text = String(value || '');
+  if (!text) return '--';
+  if (text.length <= max) return text;
+  const edge = Math.max(6, Math.floor((max - 3) / 2));
+  return `${text.slice(0, edge)}...${text.slice(-edge)}`;
+}
+
+function truncateText(value, max = 180) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
 function toneForStatus(status) {
@@ -421,15 +436,23 @@ function renderStatusStrip() {
   if (state.selectedRun) {
     setText('selected-run-state', formatStatus(state.selectedRun.status));
     setToneText('selected-run-state', selectedRunTone);
-    setText('selected-run-detail-id', state.selectedRun.runId);
+    const selectedRunIdElement = document.getElementById('selected-run-detail-id');
+    if (selectedRunIdElement) {
+      selectedRunIdElement.textContent = truncateMiddle(state.selectedRun.runId, 34);
+      selectedRunIdElement.title = state.selectedRun.runId;
+    }
     setText(
       'selected-run-detail-meta',
-      `${String(state.selectedRun.mode || 'run').toLowerCase()} - ${formatRelativeTime(state.selectedRun.updatedAt)}`,
+      `${String(state.selectedRun.mode || 'run').toLowerCase()} · ${formatRelativeTime(state.selectedRun.updatedAt)}`,
     );
   } else {
     setText('selected-run-state', 'None');
     setToneText('selected-run-state');
-    setText('selected-run-detail-id', 'Select or create a run.');
+    const selectedRunIdElement = document.getElementById('selected-run-detail-id');
+    if (selectedRunIdElement) {
+      selectedRunIdElement.textContent = 'Select or launch a run.';
+      selectedRunIdElement.removeAttribute('title');
+    }
     setText('selected-run-detail-meta', '');
   }
 
@@ -584,7 +607,7 @@ function renderRuns() {
         <span class="status-chip is-attached">${escapeHtml(formatStatus(run.mode))}</span>
         <span class="run-row-phase">${escapeHtml(run.summary?.phase?.name || 'No phase')}</span>
       </div>
-      <p class="run-row-id">${escapeHtml(run.runId)}</p>
+      <p class="run-row-id" title="${escapeHtml(run.runId)}">${escapeHtml(truncateMiddle(run.runId, 30))}</p>
       <div class="run-row-meta">
         <span>${escapeHtml(run.suiteId)}</span>
         <span>${escapeHtml(formatRelativeTime(run.updatedAt))}</span>
@@ -703,17 +726,19 @@ function renderEvents() {
   if (!container) return;
 
   if (!state.selectedRun) {
-    container.innerHTML = '<p class="empty-state">Select a run to inspect recent events.</p>';
+    container.innerHTML = '<p class="empty-state">Select a run to see recent events.</p>';
     return;
   }
 
   if (state.selectedEvents.length === 0) {
-    container.innerHTML = '<p class="empty-state">No normalized events are available yet.</p>';
+    container.innerHTML = '<p class="empty-state">No events have been indexed yet.</p>';
     return;
   }
 
   container.innerHTML = state.selectedEvents.map((event) => {
     const accentTone = String(event?.level || '').toLowerCase() === 'error' ? 'danger' : 'info';
+    const rawText = event.raw ? String(event.raw) : '';
+    const rawPreview = rawText ? truncateText(rawText, 180) : '';
     return `
     <article class="event-row ${accentClassForTone(accentTone)}">
       <div class="event-row-head">
@@ -722,7 +747,7 @@ function renderEvents() {
         <span class="event-meta">${escapeHtml(formatRelativeTime(event.timestamp))}</span>
       </div>
       <p class="event-title">${escapeHtml(event.title || event.type || 'Event')}</p>
-      ${event.raw ? `<code class="event-raw">${escapeHtml(event.raw)}</code>` : ''}
+      ${rawPreview ? `<code class="event-raw" title="${escapeHtml(rawText)}">${escapeHtml(rawPreview)}</code>` : ''}
     </article>
   `;
   }).join('');

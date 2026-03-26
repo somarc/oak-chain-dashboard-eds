@@ -140,7 +140,7 @@
       <main class="dashboard-main">
         <header class="dashboard-header">
           <div class="header-copy">
-            <p class="header-kicker">Validation Flight Deck</p>
+            <p class="header-kicker">Mock Validation Runner</p>
             <h1>Staircase</h1>
           </div>
           <div class="header-meta">
@@ -165,7 +165,7 @@
         </header>
 
         <div class="dashboard-content staircase-content">
-          <div id="runner-notice" class="notice-bar">Loading runner state.</div>
+          <div id="runner-notice" class="notice-bar">Loading run state.</div>
 
           <section class="status-strip" aria-label="Runner and run summary">
             <article class="status-tile status-tile--runner">
@@ -174,22 +174,22 @@
               <p id="runner-detail" class="tile-detail">Waiting for runner status.</p>
             </article>
             <article class="status-tile status-tile--cluster">
-              <p class="tile-label">Cluster</p>
+              <p class="tile-label">Fabric</p>
               <p id="cluster-state" class="tile-value">Pending</p>
               <p id="cluster-detail" class="tile-detail">Awaiting ops summary.</p>
             </article>
             <article class="status-tile status-tile--signals">
-              <p class="tile-label">Signals</p>
+              <p class="tile-label">Ops Signals</p>
               <p id="signals-state" class="tile-value">Pending</p>
               <p id="signals-detail" class="tile-detail">Awaiting ops signals.</p>
             </article>
             <article class="status-tile status-tile--runs">
-              <p class="tile-label">Managed Runs</p>
+              <p class="tile-label">Runs</p>
               <p id="active-runs" class="tile-value">0</p>
               <p id="active-runs-detail" class="tile-detail">No persisted runs yet.</p>
             </article>
             <article class="status-tile status-tile--selected">
-              <p class="tile-label">Selected Run</p>
+              <p class="tile-label">Focus</p>
               <p id="selected-run-state" class="tile-value">None</p>
               <p id="selected-run-detail-id" class="tile-detail tile-detail--mono">Select or create a run.</p>
               <p id="selected-run-detail-meta" class="tile-detail tile-detail--meta"></p>
@@ -201,8 +201,8 @@
               <div class="launch-plane">
                 <div class="launch-heading">
                   <div>
-                    <p class="pane-kicker">Launch Plane</p>
-                    <h2>Attach / Launch</h2>
+                    <p class="pane-kicker">Control</p>
+                    <h2>Run Control</h2>
                   </div>
                   <div class="action-row">
                     <div class="action-switch" role="group" aria-label="Run actions">
@@ -213,7 +213,7 @@
                   </div>
                 </div>
 
-                <label class="field-label" for="attach-artifact-root">Attach Artifact Root</label>
+                <label class="field-label" for="attach-artifact-root">Artifact Root</label>
                 <input
                   id="attach-artifact-root"
                   class="text-input"
@@ -223,8 +223,8 @@
                 />
 
                 <p class="subtle-note">
-                  Every run persists its resolved inputs, events, and artifact index
-                  under the runner state root.
+                  Attach to an existing artifact root or launch a new governed
+                  staircase run.
                 </p>
               </div>
 
@@ -237,7 +237,7 @@
               <div class="column-heading">
                 <div>
                   <p class="pane-kicker">Registry</p>
-                  <h2>Runs</h2>
+                  <h2>Run History</h2>
                 </div>
               </div>
               <div id="runs-list" class="runs-list">
@@ -247,7 +247,7 @@
               <div class="column-heading column-heading--spaced">
                 <div>
                   <p class="pane-kicker">Timeline</p>
-                  <h2>Events</h2>
+                  <h2>Recent Events</h2>
                 </div>
               </div>
               <div id="events-list" class="events-list">
@@ -260,7 +260,7 @@
                 <div class="detail-panel-header">
                   <div>
                     <p class="pane-kicker">Run Detail</p>
-                    <h2>Summary</h2>
+                    <h2>Run Summary</h2>
                   </div>
                 </div>
 
@@ -275,7 +275,7 @@
                 <div class="detail-panel-header">
                   <div class="section-cap">
                     <p class="pane-kicker">Inputs</p>
-                    <h3>Persisted Snapshot</h3>
+                    <h3>Resolved Inputs</h3>
                   </div>
                 </div>
                 <div id="inputs-summary" class="inputs-summary">
@@ -287,7 +287,7 @@
                 <div class="detail-panel-header">
                   <div class="section-cap">
                     <p class="pane-kicker">Artifacts</p>
-                    <h3>Indexed Outputs</h3>
+                    <h3>Key Artifacts</h3>
                   </div>
                 </div>
                 <div id="artifacts-list" class="artifacts-list">
