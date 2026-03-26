@@ -4,6 +4,7 @@ import {
   fetchOptionalEndpoints,
   initDashboardShell,
   renderShellStatus,
+  syncShellStatusDetails,
 } from '/tools/shell.js';
 
 const PANELS = ['overview', 'cluster', 'network', 'release', 'signals', 'config', 'gc', 'debug'];
@@ -468,7 +469,6 @@ function renderOverview(summary, releaseFlow, signals, config, gc, health) {
     createMetricCard('Signals', `${signalSummary.critical ?? 0} critical`, `warn=${signalSummary.warn ?? 0} • ok=${signalSummary.ok ?? 0}`, signalSummary.critical > 0 ? 'critical' : 'ok', 'Count of active operator health findings grouped by severity.'),
     createMetricCard('Config Drift', formatNumber(config?.summary?.changedKeys || 0), `guarded=${config?.summary?.guardedChanged || 0} • expert=${config?.summary?.expertOnlyChanged || 0}`, 'neutral', 'Runtime-visible keys deviating from the shipped blockchain defaults.'),
     createMetricCard('GC Status', gc?.gcEnabled ? 'enabled' : 'disabled', `pending=${formatNumber(gc?.pendingProposals || 0)} • consensus=${formatBoolean(gc?.gcConsensusRequired)}`, 'neutral', 'Whether distributed garbage collection can run and how much GC work is still queued.'),
-    createMetricCard('Epoch Overlay', `${releaseFlow?.currentEpoch ?? 'n/a'} / ${releaseFlow?.finalizedEpoch ?? 'n/a'}`, `gap=${releaseFlow?.epochsUntilFinality ?? 'n/a'} • overlay-only`, 'neutral', 'Observed head epoch versus finalized epoch; informational overlay, not canonical release truth.'),
   );
 }
 
@@ -655,15 +655,19 @@ async function refresh() {
     renderShellStatus(data.summary, data.signals, errors);
 
     const refreshedAt = `Updated ${new Date().toLocaleTimeString()}`;
+    const lastSync = errors.length > 0
+      ? `${refreshedAt} • degraded (${errors[0]})`
+      : refreshedAt;
     setText(
       'last-updated',
-      errors.length > 0
-        ? `${refreshedAt} • degraded (${errors[0]})`
-        : refreshedAt,
+      lastSync,
     );
+    syncShellStatusDetails({ lastSync });
   } catch (error) {
     renderShellStatus({}, {}, [error.message]);
-    setText('last-updated', `Refresh failed: ${error.message}`);
+    const lastSync = `Refresh failed: ${error.message}`;
+    setText('last-updated', lastSync);
+    syncShellStatusDetails({ lastSync });
   } finally {
     if (refreshButton) {
       refreshButton.disabled = false;

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staircase - Validation Flight Deck</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #06090e;
+        color: #94a3b8;
+      }
+
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #1e293b;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #334155;
+      }
+
+      .panel {
+        background-color: #0f141e;
+        border: 1px solid #1e293b;
+        border-radius: 0.75rem;
+      }
+
+      .panel-header {
+        border-bottom: 1px solid #1e293b;
+        padding: 1rem 1.25rem;
+        background-color: rgba(15, 20, 30, 0.5);
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+      }
+    </style>
+  </head>
+  <body class="h-screen w-full flex overflow-hidden">
+    <aside class="w-64 flex-shrink-0 bg-[#0A0D14] border-r border-[#1E293B] flex flex-col justify-between z-20 relative">
+      <div>
+        <div class="h-20 flex items-center px-6 border-b border-[#1E293B]">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-[#0F141E] border border-[#1E293B] flex items-center justify-center text-teal-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-white font-semibold text-sm leading-tight">
+                Blockchain<br />
+                AEM
+              </h1>
+              <p class="text-[9px] text-slate-500 font-mono tracking-widest uppercase mt-0.5">
+                Global P2P Oak<br />
+                Repository
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-3 py-6 space-y-1">
+          <p class="px-3 text-[10px] font-semibold text-slate-500 tracking-wider uppercase mb-3">Menu</p>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-[#1E293B]/50 rounded-md transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Dashboard
+          </a>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-[#1E293B]/50 rounded-md transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+            Oak Ops
+          </a>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-white bg-[#1E293B]/80 rounded-md shadow-[inset_2px_0_0_0_#14B8A6] transition-colors relative">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-400">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+            Staircase
+          </a>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-[#1E293B]/50 rounded-md transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            Architecture
+          </a>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-[#1E293B]/50 rounded-md transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Ops Contract
+          </a>
+
+          <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-[#1E293B]/50 rounded-md transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+              <rect x="9" y="9" width="6" height="6"></rect>
+              <line x1="9" y1="1" x2="9" y2="4"></line>
+              <line x1="15" y1="1" x2="15" y2="4"></line>
+              <line x1="9" y1="20" x2="9" y2="23"></line>
+              <line x1="15" y1="20" x2="15" y2="23"></line>
+              <line x1="20" y1="9" x2="23" y2="9"></line>
+              <line x1="20" y1="14" x2="23" y2="14"></line>
+              <line x1="1" y1="9" x2="4" y2="9"></line>
+              <line x1="1" y1="14" x2="4" y2="14"></line>
+            </svg>
+            EDS Integrations
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <div class="px-6 py-4 border-t border-[#1E293B]">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-[10px] font-semibold text-slate-500 tracking-wider uppercase flex items-center gap-2">
+              System Status
+              <span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                Validator 0
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono text-[10px] border border-slate-700">WAITING</span>
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                Cluster
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] border border-emerald-500/20">HEALTHY</span>
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 12h4l2-9 5 18 2-9h5"></path>
+                </svg>
+                Signals
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-[10px] border border-emerald-500/20">OK</span>
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                Mode
+              </div>
+              <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-mono text-[10px] border border-blue-500/20">MOCK</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 bg-[#06090E] border-t border-[#1E293B]">
+          <p class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Connected Wallet</p>
+          <div class="flex items-center gap-2 text-xs text-white font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            0x742d35...f0bEb0
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-[#06090E]">
+      <header class="h-20 border-b border-[#1E293B] bg-[#0A0D14]/90 backdrop-blur-md flex items-center justify-between px-8 z-10 sticky top-0">
+        <div>
+          <h2 class="text-[10px] font-bold text-slate-400 tracking-widest uppercase mb-1">Validation Flight Deck</h2>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Staircase</h1>
+        </div>
+
+        <div class="flex items-center gap-8">
+          <div class="flex items-start gap-8">
+            <div>
+              <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Runner API</p>
+              <p class="text-xs text-slate-300 font-mono">http://127.0.0.1:8795</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Ops API</p>
+              <p class="text-xs text-slate-300 font-mono">http://127.0.0.1:8787</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Suite</p>
+              <p class="text-xs text-slate-300">Mock Scale Staircase</p>
+            </div>
+            <div>
+              <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Last Sync</p>
+              <p class="text-xs text-slate-300">Updated 9:58:22 PM</p>
+            </div>
+          </div>
+
+          <button class="bg-teal-600 hover:bg-teal-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-teal-500/20">
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="flex-1 overflow-auto p-8">
+        <div class="max-w-[1600px] mx-auto space-y-6">
+          <div class="flex items-center gap-2 text-sm text-teal-400 font-mono">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            Runner worker at http://127.0.0.1:8795
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="panel p-5 relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Runner State</p>
+              <p class="text-2xl font-bold text-white mb-1">Ready</p>
+              <p class="text-xs text-slate-500 truncate">Runner worker at http://127.0.0.1:8795</p>
+            </div>
+
+            <div class="panel p-5 relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Cluster</p>
+              <p class="text-2xl font-bold text-emerald-400 mb-1">HEALTHY</p>
+              <p class="text-xs text-slate-500 truncate">Role unknown - leader unresolved</p>
+            </div>
+
+            <div class="panel p-5 relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Signals</p>
+              <p class="text-2xl font-bold text-emerald-400 mb-1">OK</p>
+              <p class="text-xs text-slate-500">4 signals</p>
+            </div>
+
+            <div class="panel p-5 relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Managed Runs</p>
+              <p class="text-2xl font-bold text-white mb-1">4</p>
+              <p class="text-xs text-slate-500">8 persisted run records</p>
+            </div>
+
+            <div class="panel p-5 relative overflow-hidden group">
+              <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-2">Selected Run</p>
+              <p class="text-2xl font-bold text-amber-500 mb-1">CANCELLED</p>
+              <p class="text-[10px] text-slate-500 font-mono mt-1 leading-tight break-all">
+                mock-scale-staircase-20260326015554-hkfsce<br />
+                <span class="text-slate-600">launch - 3/25/2026, 9:58:22 PM</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div class="col-span-1 lg:col-span-4 space-y-6">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Launch Plane</h3>
+                </div>
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="bg-[#0F141E] border border-[#1E293B] rounded-full flex p-1">
+                    <button class="px-4 py-1.5 text-sm font-medium rounded-full bg-white text-black shadow-sm">Attach</button>
+                    <button class="px-4 py-1.5 text-sm font-medium rounded-full text-slate-400 hover:text-white">Launch</button>
+                  </div>
+                  <button class="text-sm font-medium text-slate-400 hover:text-white px-3 py-1.5">Cancel</button>
+                </div>
+
+                <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-6">Attach Artifact Root</h3>
+                <input
+                  type="text"
+                  value="/tmp/oak-mock-scale-staircase-artifacts"
+                  class="w-full bg-[#0F141E] border border-[#1E293B] text-white font-mono text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors"
+                />
+                <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+                  Every run persists its resolved inputs, events, and artifact index under the runner state root.
+                </p>
+              </div>
+
+              <div class="panel overflow-hidden">
+                <div class="panel-header flex justify-between items-center">
+                  <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Runtime</h3>
+                  <span class="text-[10px] text-slate-500">3 inputs</span>
+                </div>
+                <div class="divide-y divide-[#1E293B]">
+                  <div class="p-4">
+                    <div class="flex justify-between items-start mb-1">
+                      <h4 class="font-medium text-slate-200 text-sm">Auto Start IPFS</h4>
+                      <span class="text-[9px] font-mono tracking-wider text-slate-400 bg-[#06090E] border border-[#1E293B] px-1.5 py-0.5 rounded">AUTO_START_IPFS</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Starts a local IPFS daemon when the suite needs binary coverage.</p>
+                    <label class="flex items-center gap-2 cursor-pointer w-max group">
+                      <div class="w-4 h-4 rounded bg-teal-500 border border-teal-500 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </div>
+                      <span class="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">Enabled</span>
+                    </label>
+                  </div>
+
+                  <div class="p-4">
+                    <div class="flex justify-between items-start mb-1">
+                      <h4 class="font-medium text-slate-200 text-sm">Build Pending</h4>
+                      <span class="text-[9px] font-mono tracking-wider text-slate-400 bg-[#06090E] border border-[#1E293B] px-1.5 py-0.5 rounded">BUILD_PENDING</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Builds the runtime once at the first launch step when required.</p>
+                    <label class="flex items-center gap-2 cursor-pointer w-max group">
+                      <div class="w-4 h-4 rounded bg-teal-500 border border-teal-500 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </div>
+                      <span class="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">Enabled</span>
+                    </label>
+                  </div>
+
+                  <div class="p-4">
+                    <div class="flex justify-between items-start mb-1">
+                      <h4 class="font-medium text-slate-200 text-sm">Stop At End</h4>
+                      <span class="text-[9px] font-mono tracking-wider text-slate-400 bg-[#06090E] border border-[#1E293B] px-1.5 py-0.5 rounded">STOP_AT_END</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-3">Stops all known topologies when the suite finishes.</p>
+                    <label class="flex items-center gap-2 cursor-pointer w-max group">
+                      <div class="w-4 h-4 rounded bg-[#0A0D14] border border-[#1E293B] flex items-center justify-center transition-colors group-hover:border-slate-600">
+                        <svg class="opacity-0 w-3 h-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </div>
+                      <span class="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">Disabled</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-1 lg:col-span-4 space-y-6">
+              <div>
+                <div class="flex items-center justify-between mb-4 mt-2">
+                  <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Registry</h3>
+                </div>
+                <h2 class="text-xl font-semibold text-white mb-4">Runs</h2>
+
+                <div class="space-y-3">
+                  <div class="panel p-4 border-l-2 border-l-amber-500 relative cursor-pointer hover:bg-[#151b27] transition-colors">
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="px-1.5 py-0.5 text-[9px] font-bold text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded uppercase tracking-wider">CANCELLED</span>
+                      <span class="px-1.5 py-0.5 text-[9px] font-bold text-amber-500 border border-amber-500/30 rounded uppercase tracking-wider">LAUNCH</span>
+                      <span class="text-[10px] text-slate-500">No phase</span>
+                    </div>
+                    <p class="text-sm font-mono text-slate-200 mb-1 break-all">mock-scale-staircase-20260326015554-hkfsce</p>
+                    <div class="flex justify-between items-center text-xs text-slate-500">
+                      <span>mock-scale-staircase</span>
+                      <span>3/25/2026, 9:58:12 PM</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-6">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Timeline</h3>
+                </div>
+                <h2 class="text-xl font-semibold text-white mb-4">Events</h2>
+
+                <div class="space-y-4">
+                  <div class="panel p-4 border-l-2 border-l-blue-500">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="px-1.5 py-0.5 text-[9px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded uppercase tracking-wider">INFO</span>
+                      <span class="px-1.5 py-0.5 text-[9px] font-bold text-amber-600 border border-amber-600/30 rounded uppercase tracking-wider">LOG.LINE</span>
+                      <span class="text-[10px] text-slate-500 font-mono">3/25/2026, 9:55:54 PM</span>
+                    </div>
+                    <p class="text-sm font-medium text-white mb-2 leading-tight">Artifacts: /Users/mhess/oak-chain/test-runner/artifacts/mock-scale-staircase-20260326015554-hkfsce</p>
+                    <div class="bg-[#0A0D14] p-3 rounded border border-[#1E293B] font-mono text-[10px] text-slate-400 leading-relaxed overflow-x-auto">
+                      <span class="text-slate-500">[2026-03-25 21:55:54]</span> Artifacts: /Users/mhess/oak-chain/test-runner/artifacts/mock-scale-staircase-20260326015554-hkfsce
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-1 lg:col-span-4 space-y-6">
+              <div class="panel overflow-hidden">
+                <div class="panel-header border-b-0 pb-2">
+                  <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Run Detail</h3>
+                  <h2 class="text-xl font-semibold text-white">Summary</h2>
+                </div>
+                <div class="p-4 pt-0">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Status</p>
+                      <p class="text-sm font-bold text-white mb-1">CANCELLED</p>
+                      <p class="text-[10px] text-slate-500">Launch run</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Phase</p>
+                      <p class="text-sm font-bold text-white mb-1">--/--</p>
+                      <p class="text-[10px] text-slate-500">No active phase</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Step</p>
+                      <p class="text-sm font-bold text-white mb-1">--/--</p>
+                      <p class="text-[10px] text-slate-500">No active step</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1">Failures</p>
+                      <p class="text-sm font-bold text-white mb-1">0</p>
+                      <p class="text-[10px] text-slate-500">Last log 3/25/2026, 9:55:54 PM</p>
+                    </div>
+                  </div>
+                  <div class="mt-4 p-3 bg-[#0A0D14] border border-[#1E293B] rounded text-[11px] text-slate-400 italic">
+                    No write batches have been parsed for this run yet.
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel overflow-hidden">
+                <div class="panel-header flex justify-between items-center">
+                  <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Inputs</h3>
+                  <span class="text-xs font-medium text-white">Persisted Snapshot</span>
+                </div>
+                <div class="p-4 space-y-0.5">
+                  <div class="flex justify-between items-center py-2.5 border-b border-[#1E293B]">
+                    <div class="flex flex-col">
+                      <span class="text-sm font-medium text-slate-200">Auto Start IPFS</span>
+                      <span class="text-[9px] text-slate-500 font-mono mt-0.5">AUTO_START_IPFS</span>
+                    </div>
+                    <span class="text-sm font-mono font-medium text-white">false</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel overflow-hidden mb-8">
+                <div class="panel-header flex justify-between items-center border-b-0 pb-2">
+                  <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Artifacts</h3>
+                  <span class="text-xs font-medium text-white">Indexed Outputs</span>
+                </div>
+                <div class="p-4 space-y-4">
+                  <div>
+                    <h4 class="text-sm font-bold text-white mb-1">Artifact Root</h4>
+                    <p class="text-[11px] font-mono text-slate-300 bg-[#0A0D14] p-2 rounded border border-[#1E293B] break-all">/Users/mhess/oak-chain/test-runner/artifacts/mock-scale-staircase-20260326015554-hkfsce</p>
+                    <p class="text-[10px] text-slate-500 mt-1">1 files - 0 directories</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

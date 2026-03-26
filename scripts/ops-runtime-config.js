@@ -132,6 +132,41 @@ const OAKCHAIN_OPS_RUNTIME_CONFIG = Object.freeze({
   refreshSeconds: POLLING_REFRESH_SECONDS,
 });
 
+const DIRECT_RUNNER_ENDPOINTS = Object.freeze({
+  suites: '/runner/v1/suites',
+  suite: '/runner/v1/suites/{suiteId}',
+  testRuns: '/runner/v1/test-runs',
+  run: '/runner/v1/test-runs/{runId}',
+  inputs: '/runner/v1/test-runs/{runId}/inputs',
+  events: '/runner/v1/test-runs/{runId}/events',
+  artifacts: '/runner/v1/test-runs/{runId}/artifacts',
+  cancel: '/runner/v1/test-runs/{runId}/cancel',
+});
+
+const BASE_RUNNER_RUNTIME_CONFIG = Object.freeze({
+  refreshSeconds: Object.freeze({
+    runs: 15,
+    run: 10,
+    events: 6,
+    artifacts: 20,
+  }),
+  endpoints: DIRECT_RUNNER_ENDPOINTS,
+  defaults: Object.freeze({
+    suiteId: 'mock-scale-staircase',
+    attachArtifactRoot: '/tmp/oak-mock-scale-staircase-artifacts',
+  }),
+});
+
+const LOCAL_RUNNER_RUNTIME_CONFIG = Object.freeze({
+  ...BASE_RUNNER_RUNTIME_CONFIG,
+  apiBase: 'http://127.0.0.1:8795',
+});
+
+const PENDING_RUNNER_RUNTIME_CONFIG = Object.freeze({
+  ...BASE_RUNNER_RUNTIME_CONFIG,
+  apiBase: '',
+});
+
 function isLocalHostname(hostname) {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
@@ -151,9 +186,38 @@ function resolveDefaultOpsRuntimeConfig() {
   return HOSTED_EDGE_OPS_RUNTIME_CONFIG;
 }
 
+function resolveDefaultRunnerRuntimeConfig() {
+  const hostname = String(window.location.hostname || '').toLowerCase();
+  if (isLocalHostname(hostname)) {
+    return LOCAL_RUNNER_RUNTIME_CONFIG;
+  }
+  return PENDING_RUNNER_RUNTIME_CONFIG;
+}
+
 export function getOpsRuntimeConfig() {
   const defaults = resolveDefaultOpsRuntimeConfig();
   const override = window.OAK_OPS_RUNTIME_CONFIG || {};
+  return {
+    ...defaults,
+    ...override,
+    refreshSeconds: {
+      ...defaults.refreshSeconds,
+      ...(override.refreshSeconds || {}),
+    },
+    endpoints: {
+      ...defaults.endpoints,
+      ...(override.endpoints || {}),
+    },
+    defaults: {
+      ...defaults.defaults,
+      ...(override.defaults || {}),
+    },
+  };
+}
+
+export function getRunnerRuntimeConfig() {
+  const defaults = resolveDefaultRunnerRuntimeConfig();
+  const override = window.OAK_RUNNER_RUNTIME_CONFIG || {};
   return {
     ...defaults,
     ...override,
