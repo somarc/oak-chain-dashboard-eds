@@ -1,4 +1,7 @@
+import { getRunnerRuntimeConfig } from '/scripts/ops-runtime-config.js';
 import { runtime, initDashboardShell } from '/tools/shell.js';
+
+const runnerRuntime = getRunnerRuntimeConfig();
 
 function setText(id, value) {
   const element = document.getElementById(id);
@@ -25,15 +28,23 @@ function detectRuntimeModel() {
   return 'Custom gateway runtime';
 }
 
+function getRunnerBaseLabel() {
+  return runnerRuntime.apiBase || 'Pending deployment';
+}
+
 function renderRuntimeArchitecture() {
   const runtimeModel = detectRuntimeModel();
   setText('runtime-model', runtimeModel);
   setText('architecture-runtime', runtimeModel);
   setText('architecture-mode-heading', runtimeModel);
-  setText('architecture-api-base', runtime.apiBase || '--');
+  setText('ops-runtime-base', runtime.apiBase || '--');
+  setText('runner-runtime-base', getRunnerBaseLabel());
+  setText('architecture-ops-api-base', runtime.apiBase || '--');
+  setText('architecture-runner-api-base', getRunnerBaseLabel());
   setText('architecture-summary-route', routeFor('explorerSummary', '/ops/v1/overview'));
   setText('architecture-release-route', routeFor('proposalsReleaseFlow', '/ops/v1/proposals/release-flow'));
-  setText('architecture-signals-route', routeFor('signals', '/ops/v1/signals'));
+  setText('architecture-runner-runs-route', runnerRuntime.endpoints?.testRuns || '/runner/v1/test-runs');
+  setText('architecture-runner-events-route', runnerRuntime.endpoints?.events || '/runner/v1/test-runs/{runId}/events');
 }
 
 renderRuntimeArchitecture();

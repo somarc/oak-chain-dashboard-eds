@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Architecture map for Blockchain AEM from participant wallets through validators, edge workers, and Edge Delivery surfaces."
+      content="Architecture map for Blockchain AEM from participant wallets through validators, read adapters, runner control planes, and Edge Delivery surfaces."
     />
     <base href="/tools/" />
     <link rel="stylesheet" href="/tools/shell.css" />
@@ -145,12 +145,16 @@
           </div>
           <div class="header-meta">
             <div class="header-pill">
-              <span class="pill-label">Runtime</span>
+              <span class="pill-label">Ops Runtime</span>
               <strong id="runtime-model">Loading…</strong>
             </div>
             <div class="header-pill">
-              <span class="pill-label">API Base</span>
-              <strong id="runtime-base">--</strong>
+              <span class="pill-label">Ops API</span>
+              <strong id="ops-runtime-base">--</strong>
+            </div>
+            <div class="header-pill">
+              <span class="pill-label">Runner API</span>
+              <strong id="runner-runtime-base">Loading…</strong>
             </div>
             <div class="header-pill">
               <span class="pill-label">Last Sync</span>
@@ -166,7 +170,7 @@
                 <p class="card-kicker">End-to-End View</p>
                 <h2>From Wallet Intent to an App Ecosystem</h2>
                 <p class="card-body">
-                  Participant wallets initiate proposals and identity-bearing actions. The validator cluster, release-flow governor, and IPFS-backed replication establish canonical Oak and JCR-backed state. Edge and gateway workers then normalize that truth into read models that many apps can consume, from Oak Ops to DA/live sites dedicated to genesis-state storytelling, provenance, and content reality.
+                  Participant wallets initiate proposals and identity-bearing actions. The validator cluster, release-flow governor, and IPFS-backed replication establish canonical Oak and JCR-backed state. From there the system now splits cleanly into two edge-facing planes: a read-model fabric for posture and explorer truth, and a governed runner control plane for staircase launches, persisted inputs, normalized events, and indexed artifacts.
                 </p>
               </div>
               <div class="chip-row" aria-label="Architecture layers">
@@ -174,7 +178,8 @@
                 <span class="chip">Validators</span>
                 <span class="chip">Oak/JCR State</span>
                 <span class="chip">Release Flow</span>
-                <span class="chip">Edge Workers</span>
+                <span class="chip">Read Plane</span>
+                <span class="chip">Runner Plane</span>
                 <span class="chip">Apps</span>
               </div>
             </article>
@@ -189,16 +194,16 @@
               </article>
               <article class="meta-card">
                 <p class="card-kicker">Platform Layer</p>
-                <h3>Read-Model Fabric</h3>
+                <h3>Dual Edge Planes</h3>
                 <p class="meta-body">
-                  Apps do not read raw validator internals directly. Edge adapters and workers project canonical state into app-specific contracts, including <code>/ops/v1</code> locally and the hosted <code>oak-chain-action</code> bridge in EDS-hosted environments.
+                  Apps do not read raw validator internals directly. The read plane projects canonical state into app-safe contracts such as <code>/ops/v1</code> and <code>oak-chain-action</code>, while the runner plane exposes governed staircase APIs for suites, runs, inputs, events, artifacts, and cancel semantics.
                 </p>
               </article>
               <article class="meta-card meta-card--accent">
                 <p class="card-kicker">Current Execution</p>
                 <h3 id="architecture-runtime">Loading…</h3>
                 <p class="meta-body">
-                  This page resolves the same runtime selection rules as Oak Ops so the architecture view reflects the actual environment you opened.
+                  This page resolves both the ops runtime and the runner runtime so the explainer reflects the actual environment you opened, including whether Staircase control is local, hosted, or still pending.
                 </p>
               </article>
             </div>
@@ -264,15 +269,15 @@
                     <path d="M4 7a3 3 0 0 1 3-3h4.5v1.5H7A1.5 1.5 0 0 0 5.5 7v2.5H10V11H5.5v6A1.5 1.5 0 0 0 7 18.5h4.5V20H7a3 3 0 0 1-3-3V7Zm9 0h4a3 3 0 0 1 3 3v1.5h-1.5V10A1.5 1.5 0 0 0 17 8.5h-4V7Zm-1 4h8v1.5h-8V11Zm0 3.75h6.5v1.5H12v-1.5Zm0 3.75h8V20h-8v-1.5Z" />
                   </svg>
                 </div>
-                <p class="stage-kicker">Edge Adapter</p>
-                <h3>Gateway and Workers</h3>
+                <p class="stage-kicker">Edge Plane</p>
+                <h3>Read Adapter and Runner Control Plane</h3>
                 <p class="stage-body">
-                  A worker-backed gateway converts raw consensus data into a dashboard-safe read model with auth, CORS, and cache boundaries at the edge.
+                  One edge lane converts consensus posture into dashboard-safe read models, while a second runner lane governs staircase execution against infra harnesses and persists durable run truth outside the validator plane.
                 </p>
                 <ul class="stage-list">
-                  <li><code>/ops/v1</code> contract for UI clients</li>
-                  <li><code>oak-chain-action</code> hosted bridge routes</li>
-                  <li>Cloudflare and Adobe I/O edge execution paths</li>
+                  <li><code>/ops/v1</code> and <code>oak-chain-action</code> for read-only posture, explorer, and signal clients</li>
+                  <li><code>/runner/v1</code> for suites, test runs, events, artifacts, and cancel semantics</li>
+                  <li>Cloudflare and Adobe I/O read paths, with a separate staircase runner worker for mutable test orchestration</li>
                 </ul>
               </article>
 
@@ -289,12 +294,12 @@
                 <p class="stage-kicker">Apps</p>
                 <h3>App Ecosystem</h3>
                 <p class="stage-body">
-                  EDS pages, Oak Ops, DA/live properties, and future explorers render specialized views of the same underlying truth without taking direct consensus writes.
+                  EDS pages, Oak Ops, Staircase, DA/live properties, and future explorers render specialized views of the same underlying truth while keeping consensus authority separate from UX concerns.
                 </p>
                 <ul class="stage-list">
-                  <li>Oak Ops control plane</li>
-                  <li>Genesis-state DA/live and storytelling sites</li>
-                  <li>Read-only provenance, audit, and content-state explorers</li>
+                  <li>Oak Ops read-only control surface</li>
+                  <li>Staircase validation flight deck with persisted run records</li>
+                  <li>Genesis-state, provenance, and content-state explorers</li>
                 </ul>
               </article>
             </div>
@@ -319,15 +324,15 @@
             <article class="path-card path-card--dark">
               <div class="section-heading section-heading--compact">
                 <div>
-                  <p class="eyebrow">Read Path</p>
-                  <h2>Read Models and Consumer Apps</h2>
+                  <p class="eyebrow">Read and Control Paths</p>
+                  <h2>Projected State and Governed Test Control</h2>
                 </div>
               </div>
               <ol class="path-steps">
-                <li>Edge or gateway worker reads consensus and explorer sources.</li>
-                <li>Worker normalizes them into stable contracts and route bridges for different surfaces.</li>
-                <li>Oak Ops, DA/live apps, and other EDS properties fetch those read models only.</li>
-                <li>Each app expresses one slice of value without coupling directly to raw internals.</li>
+                <li>Edge adapters read consensus and explorer sources and normalize them into stable posture contracts.</li>
+                <li>The runner worker governs staircase attach, launch, cancel, and artifact indexing without exposing raw infra scripts directly to the browser.</li>
+                <li>Oak Ops fetches read-only cluster truth, while Staircase reads and writes only against the runner contract.</li>
+                <li>Each app expresses one slice of value without coupling directly to validator internals or shell scripts.</li>
               </ol>
             </article>
           </section>
@@ -342,10 +347,18 @@
             </article>
 
             <article class="ecosystem-card">
-              <p class="card-kicker">Storytelling</p>
-              <h3>Genesis State Site</h3>
+              <p class="card-kicker">Validation</p>
+              <h3>Staircase Flight Deck</h3>
               <p class="ecosystem-body">
-                A dedicated DA/live property that turns genesis writes and early chain state into a public, legible narrative of why the content graph matters.
+                A governed test-run surface for attaching to live artifact roots or launching new runs, with persisted input snapshots, event feeds, cancel semantics, and indexed artifacts.
+              </p>
+            </article>
+
+            <article class="ecosystem-card">
+              <p class="card-kicker">Storytelling</p>
+              <h3>Genesis and Provenance Sites</h3>
+              <p class="ecosystem-body">
+                Dedicated DA/live properties can turn genesis writes, release history, and provenance into public, legible narratives of why the content graph matters.
               </p>
             </article>
 
@@ -358,10 +371,10 @@
             </article>
 
             <article class="ecosystem-card ecosystem-card--accent">
-              <p class="card-kicker">Velocity</p>
-              <h3>AEM-Scale App Speed</h3>
+              <p class="card-kicker">Platform Value</p>
+              <h3>Many Focused Apps, One Canonical Core</h3>
               <p class="ecosystem-body">
-                The value is not one dashboard. The value is a platform that can spawn many focused apps as quickly as AEM properties do today.
+                The value is not one dashboard. The value is a platform that can spawn read surfaces and operational tools quickly while keeping consensus authority and test orchestration contracts explicit.
               </p>
             </article>
           </section>
@@ -371,24 +384,32 @@
               <p class="card-kicker">Current Runtime</p>
               <h3 id="architecture-mode-heading">Loading…</h3>
               <p class="interface-body">
-                This view resolves through the same runtime switch as the rest of the dashboard, so the routes below are the actual edge shape for the host you opened.
+                This view resolves through the same runtime switches as the rest of the dashboard, so the routes below reflect the actual ops and runner contracts for the host you opened.
               </p>
               <dl class="interface-list">
                 <div>
-                  <dt>API Base</dt>
-                  <dd><code id="architecture-api-base">--</code></dd>
+                  <dt>Ops API Base</dt>
+                  <dd><code id="architecture-ops-api-base">--</code></dd>
                 </div>
                 <div>
-                  <dt>Summary Route</dt>
+                  <dt>Runner API Base</dt>
+                  <dd><code id="architecture-runner-api-base">--</code></dd>
+                </div>
+                <div>
+                  <dt>Ops Summary Route</dt>
                   <dd><code id="architecture-summary-route">--</code></dd>
                 </div>
                 <div>
-                  <dt>Release Route</dt>
+                  <dt>Ops Release Route</dt>
                   <dd><code id="architecture-release-route">--</code></dd>
                 </div>
                 <div>
-                  <dt>Signals Route</dt>
-                  <dd><code id="architecture-signals-route">--</code></dd>
+                  <dt>Runner Runs Route</dt>
+                  <dd><code id="architecture-runner-runs-route">--</code></dd>
+                </div>
+                <div>
+                  <dt>Runner Events Route</dt>
+                  <dd><code id="architecture-runner-events-route">--</code></dd>
                 </div>
               </dl>
             </article>
@@ -397,11 +418,12 @@
               <p class="card-kicker">App Constellation</p>
               <h3>EDS Touchpoints</h3>
               <p class="interface-body">
-                The same state fabric can feed standalone tools, Oak Ops, authored Edge Delivery pages, and dedicated DA/live products without changing the underlying validator contract.
+                The same state fabric can feed standalone tools, Oak Ops, Staircase, authored Edge Delivery pages, and dedicated DA/live products without changing the underlying validator contract.
               </p>
               <ul class="surface-list">
                 <li>Tools home and architecture explorer</li>
-                <li>Oak Ops operator control plane</li>
+                <li>Oak Ops read-only operator control plane</li>
+                <li>Staircase validation flight deck for governed suite execution</li>
                 <li>Genesis and provenance sites on <code>aem.page</code> and <code>aem.live</code></li>
                 <li>Future custom delivery properties on <code>oakchain.net</code></li>
               </ul>
@@ -409,26 +431,26 @@
 
             <article class="interface-card interface-card--accent">
               <p class="card-kicker">Trust Boundary</p>
-              <h3>Edge Adapter, Not Direct Writes</h3>
+              <h3>Separate Read and Control Contracts</h3>
               <p class="interface-body">
-                The dashboard contract is intentionally read-only. Security and transport concerns stay at the gateway so UX surfaces can remain stable and low-risk.
+                The dashboard never writes validator consensus directly. Oak Ops stays read-only through the ops adapter, while Staircase talks to a separate runner contract that supervises infra automation and persists normalized run records outside the consensus plane.
               </p>
               <dl class="interface-list">
                 <div>
-                  <dt>Protocol</dt>
-                  <dd>HTTPS</dd>
+                  <dt>Ops Plane</dt>
+                  <dd>Read-only <code>/ops/v1</code> posture, explorer, and signal routes</dd>
                 </div>
                 <div>
-                  <dt>Auth</dt>
-                  <dd>Bearer token or secure session cookie</dd>
+                  <dt>Runner Plane</dt>
+                  <dd>Governed <code>/runner/v1</code> launch, attach, cancel, events, and artifact APIs</dd>
                 </div>
                 <div>
-                  <dt>CORS</dt>
-                  <dd>Allowlisted dashboard origins only</dd>
+                  <dt>Consensus Authority</dt>
+                  <dd>Validator proposals, release flow, and replication remain the only canonical write path</dd>
                 </div>
                 <div>
                   <dt>Cache</dt>
-                  <dd>Short-lived edge caching for read endpoints</dd>
+                  <dd>Short-lived edge caching for read endpoints, with mutable runner actions handled separately</dd>
                 </div>
               </dl>
             </article>
