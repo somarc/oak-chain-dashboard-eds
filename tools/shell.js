@@ -23,8 +23,8 @@ function isOakchainApiBase(apiBase = runtime.apiBase) {
   return String(apiBase || '').toLowerCase().includes('ops.oakchain.net');
 }
 
-function isAdobeIoApiBase(apiBase = runtime.apiBase) {
-  return String(apiBase || '').toLowerCase().includes('adobeio-static.net');
+function isCloudflareWorkersApiBase(apiBase = runtime.apiBase) {
+  return String(apiBase || '').toLowerCase().includes('.workers.dev');
 }
 
 export function getRuntimePresentation() {
@@ -68,12 +68,12 @@ export function getRuntimePresentation() {
     };
   }
 
-  if (isAdobeIoApiBase()) {
+  if (isCloudflareWorkersApiBase()) {
     return {
       hostKind,
       mode: 'live',
-      model: 'Adobe I/O edge bridge',
-      displayBase: 'Adobe I/O edge bridge',
+      model: 'Cloudflare edge worker',
+      displayBase: runtime.apiBase || 'Cloudflare edge worker',
       shouldFetch: true,
       disconnected: false,
     };

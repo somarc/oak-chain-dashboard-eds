@@ -135,7 +135,7 @@ const LOCAL_OPS_RUNTIME_CONFIG = Object.freeze({
 
 const HOSTED_EDGE_OPS_RUNTIME_CONFIG = Object.freeze({
   ...BASE_OPS_RUNTIME_CONFIG,
-  apiBase: 'https://316182-blocknarration-stage.adobeio-static.net/api/v1/web/oak-chain-edge-worker',
+  apiBase: 'https://oak-chain-edge-worker.mc-hess.workers.dev',
   refreshSeconds: POLLING_REFRESH_SECONDS,
   endpoints: EDGE_WORKER_ENDPOINTS,
 });

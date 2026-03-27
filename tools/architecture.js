@@ -22,8 +22,8 @@ function detectRuntimeModel() {
   if (base.includes('ops.oakchain.net')) {
     return 'Oak Chain edge domain';
   }
-  if (base.includes('adobeio-static.net')) {
-    return 'Adobe I/O edge bridge';
+  if (base.includes('.workers.dev')) {
+    return 'Cloudflare edge worker';
   }
   return 'Custom gateway runtime';
 }
