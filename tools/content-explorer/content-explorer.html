@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Blockchain AEM | Content Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Standalone content explorer for cluster-aware Oak Chain repository inspection."
+    />
+    <base href="/tools/" />
+    <link rel="stylesheet" href="/tools/content-explorer/content-explorer.css" />
+    <script src="/tools/content-explorer/content-explorer.js" type="module"></script>
+  </head>
+  <body class="explorer-app">
+    <header class="explorer-topbar">
+      <div class="explorer-brand">
+        <a class="explorer-brand-link" href="/tools/index.html" aria-label="Back to tools dashboard">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <path d="M12 2.5 4 7v10l8 4.5 8-4.5V7l-8-4.5Zm0 2.2 5.8 3.2L12 11 6.2 7.9 12 4.7Zm-6.3 4.6 5.2 3v6.3l-5.2-2.9V9.3Zm7.3 9.3v-6.3l5.2-3v6.3L13 18.6Z" />
+          </svg>
+          <span>Blockchain AEM Explorer</span>
+          <span class="explorer-brand-homage">CRX/OC</span>
+        </a>
+      </div>
+      <div class="explorer-runtime">
+        <div class="runtime-copy">
+          <span class="runtime-label">API Base</span>
+          <strong id="runtime-base">--</strong>
+        </div>
+        <div id="runtime-mode" class="runtime-mode">--</div>
+      </div>
+    </header>
+
+    <div class="explorer-toolbar">
+      <div class="toolbar-actions">
+        <button id="action-refresh" class="toolbar-button" type="button">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          Refresh
+        </button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="action-browse-root" class="toolbar-button" type="button">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+            <path d="M9 22v-8h6v8" />
+          </svg>
+          Browse Root
+        </button>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="action-copy-path" class="toolbar-button" type="button">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <rect x="8" y="8" width="13" height="13" rx="2" />
+            <path d="M5 16a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2" />
+          </svg>
+          Copy Path
+        </button>
+        <button id="action-open-path" class="toolbar-button" type="button">
+          <svg viewBox="0 0 24 24" role="presentation">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <path d="M15 3h6v6" />
+            <path d="M10 14 21 3" />
+          </svg>
+          Open Path
+        </button>
+      </div>
+      <div id="content-readonly-badge" class="toolbar-pill">Loading</div>
+    </div>
+
+    <main class="explorer-shell">
+      <aside class="explorer-tree-pane">
+        <div class="pane-header">
+          <span>Workspace:</span>
+          <strong id="content-workspace-label">Loading…</strong>
+        </div>
+        <div id="content-tree-sections" class="tree-sections"></div>
+      </aside>
+
+      <section class="explorer-main-pane">
+        <div class="pathbar">
+          <label class="pathbar-label" for="content-current-path">Path:</label>
+          <div class="pathbar-input-wrap">
+            <input
+              id="content-current-path"
+              class="pathbar-input"
+              type="text"
+              value="/oak-chain"
+              spellcheck="false"
+            />
+          </div>
+          <span id="last-updated" class="pathbar-status">Loading…</span>
+        </div>
+
+        <div class="content-tabbar" role="tablist" aria-label="Content explorer panels">
+          <button class="content-tab is-active" type="button" data-tab="properties" aria-selected="true">
+            Properties
+          </button>
+          <button class="content-tab" type="button" data-tab="provenance" aria-selected="false">
+            Provenance
+          </button>
+          <button class="content-tab" type="button" data-tab="json" aria-selected="false">
+            JSON
+          </button>
+        </div>
+
+        <div class="explorer-panel-scroll">
+          <section class="content-panel-view" data-panel="properties">
+            <div class="section-head">
+              <div>
+                <h1 id="content-node-title">Node Properties</h1>
+                <p id="content-node-summary" class="section-summary">
+                  Select a cluster scope to inspect node state, ownership, and provenance.
+                </p>
+              </div>
+              <div id="content-primary-type-badge" class="type-badge">--</div>
+            </div>
+
+            <div id="content-node-meta" class="node-meta"></div>
+
+            <section class="data-card">
+              <div class="data-card-head">
+                <h2>Node Properties</h2>
+              </div>
+              <div id="content-properties"></div>
+            </section>
+
+            <section class="data-card">
+              <div class="data-card-head">
+                <h2>Child Nodes</h2>
+              </div>
+              <div id="content-children"></div>
+            </section>
+          </section>
+
+          <section class="content-panel-view is-hidden" data-panel="provenance">
+            <div class="section-head">
+              <div>
+                <h1>Consensus Provenance</h1>
+                <p class="section-summary">
+                  Authority, cache posture, validator lineage, and namespace context for the selected node.
+                </p>
+              </div>
+              <div id="content-selection-pill" class="status-chip">Awaiting selection</div>
+            </div>
+
+            <div id="content-provenance-panel"></div>
+          </section>
+
+          <section class="content-panel-view is-hidden" data-panel="json">
+            <div class="section-head">
+              <div>
+                <h1>JSON View</h1>
+                <p class="section-summary">
+                  Raw explorer payloads for the selected node, suitable for debugging and upstream contract inspection.
+                </p>
+              </div>
+            </div>
+
+            <pre id="content-json" class="json-panel"></pre>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

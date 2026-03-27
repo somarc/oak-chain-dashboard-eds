@@ -743,6 +743,62 @@ Compatibility notes:
 - Events recent: 3-5 seconds or SSE equivalent
 - Transaction detail: on-demand + manual refresh
 
+## Explorer and Catalog Routes
+
+### `GET /ops/v1/index`
+
+Purpose: governed, browser-safe API catalog derived from validator `/v1/index`.
+
+Rules:
+
+- expose GET-only governed source routes
+- do not expose raw validator-local diagnostics such as `/api/*`
+- surface validator `replacement` mappings so EDS tools can remain contract-driven
+
+### `GET /ops/v1/explorer/summary`
+
+Purpose: explorer summary read model for blockscan-style UX.
+
+### `GET /ops/v1/explorer/proposals/{proposalId}`
+
+Purpose: canonical proposal detail route for upstream UX.
+
+Compatibility:
+
+- `/ops/v1/explorer/proposal/{proposalId}` may remain as a temporary alias for existing callers during cutover
+
+### `GET /ops/v1/explorer/wallets/{walletAddress}`
+
+Purpose: wallet detail with authority metadata so upstream UX can distinguish local authority from mounted-neighbor reads.
+
+### `GET /ops/v1/explorer/release-flow`
+
+Purpose: explorer-facing release-flow contract for block explorer UX.
+
+### `GET /ops/v1/explorer/content/nav`
+
+Purpose: cluster-aware left-nav model for the content-state explorer.
+
+### `GET /ops/v1/explorer/content/clusters/{clusterId}/tree`
+
+Purpose: browse the visible subtree for one logical cluster section.
+
+### `GET /ops/v1/explorer/content/clusters/{clusterId}/node`
+
+Purpose: node detail and property surface for the selected path.
+
+### `GET /ops/v1/explorer/content/clusters/{clusterId}/provenance`
+
+Purpose: provenance, authority, and recent-write facts for the selected path.
+
+## Explorer Cache Guidance
+
+- Special explorer caching is enabled only in `sepolia` and `mainnet` modes.
+- Local-fiefdom wallet and content reads are cached until invalidated by content, binary, delete, wallet, or consensus events.
+- If the invalidation plane becomes unhealthy, local explorer cache falls back to short TTL behavior instead of serving indefinite stale data.
+- Mounted-neighbor content is observational and read-only; remote explorer content is cached opportunistically with a hard 24-hour TTL.
+- Mock mode keeps explorer routes simple and does not depend on the special invalidation cache.
+
 ## Source Mapping (validator-native `/v1/*` -> `/ops/v1`)
 
 This mapping is gateway-owned. Browser code must not call the left-hand routes directly.
@@ -753,7 +809,15 @@ This mapping is gateway-owned. Browser code must not call the left-hand routes d
 - `/v1/ops/snapshots/replication` -> `/ops/v1/replication`
 - `/v1/ops/snapshots/queue` -> `/ops/v1/queue`
 - `/v1/proposals/release-flow` -> `/ops/v1/proposals/release-flow`
+- `/v1/index` -> `/ops/v1/index`
+- `/v1/explorer/summary` -> `/ops/v1/explorer/summary`
+- `/v1/explorer/proposals/{proposalId}` -> `/ops/v1/explorer/proposals/{proposalId}`
+- `/v1/explorer/wallets/{walletAddress}` -> `/ops/v1/explorer/wallets/{walletAddress}`
 - `/v1/explorer/release-flow` -> `/ops/v1/explorer/release-flow`
+- `/v1/explorer/content/nav` -> `/ops/v1/explorer/content/nav`
+- `/v1/explorer/content/clusters/{clusterId}/tree` -> `/ops/v1/explorer/content/clusters/{clusterId}/tree`
+- `/v1/explorer/content/clusters/{clusterId}/node` -> `/ops/v1/explorer/content/clusters/{clusterId}/node`
+- `/v1/explorer/content/clusters/{clusterId}/provenance` -> `/ops/v1/explorer/content/clusters/{clusterId}/provenance`
 - `/v1/proposals/epochs` -> `/ops/v1/proposals/epochs` (compatibility overlay; deprecated)
 - `/v1/explorer/epochs` -> `/ops/v1/explorer/epochs` (compatibility overlay; deprecated)
 - `/v1/ops/snapshots/health` + `/v1/ops/snapshots/runtime` + `/v1/ops/snapshots/storage` -> `/ops/v1/health`

@@ -26,6 +26,7 @@ const OPS_UPSTREAM_AUTH_TOKEN = readStringEnv(
   '',
 );
 const SOURCE_CONTRACT_VERSIONS = Object.freeze({
+  '/v1/index': 'index.v1',
   '/v1/consensus/leader': 'consensus.leader.v1',
   '/v1/consensus/status': 'consensus.status.v1',
   '/v1/ops/snapshots/health': 'ops.v1',
@@ -37,6 +38,12 @@ const SOURCE_CONTRACT_VERSIONS = Object.freeze({
   '/v1/proposals/release-flow': 'release-flow.v1',
   '/v1/proposals/epochs': 'proposal.epoch-overlay.v1',
   '/v1/explorer/summary': 'explorer.v1',
+  '/v1/explorer/proposals/{proposalId}': 'explorer.v1',
+  '/v1/explorer/wallets/{walletAddress}': 'explorer.v1',
+  '/v1/explorer/content/nav': 'explorer.content.v1',
+  '/v1/explorer/content/clusters/{clusterId}/tree': 'explorer.content.v1',
+  '/v1/explorer/content/clusters/{clusterId}/node': 'explorer.content.v1',
+  '/v1/explorer/content/clusters/{clusterId}/provenance': 'explorer.content.v1',
   '/v1/events/recent': 'events.recent.v1',
   '/v1/events/stats': 'events.stats.v1',
   '/v1/config/osgi': 'config.osgi.v1',
@@ -631,6 +638,47 @@ async function resolveHeader() {
 }
 async function resolveExplorerSummary() {
   return upstreamGetUnwrapped('/v1/explorer/summary');
+}
+
+async function resolveExplorerIndex() {
+  const payload = await upstreamGetUnwrapped('/v1/index');
+  const endpoints = Array.isArray(pick(payload, ['endpoints'], [])) ? pick(payload, ['endpoints'], []) : [];
+  return {
+    contractVersion: 'ops.index.v1',
+    generatedAtMs: Date.now(),
+    surfaceRole: 'edge-governed',
+    preferredBrowserContract: '/ops/v1/*',
+    derivedFrom: '/v1/index',
+    count: endpoints.filter((endpoint) => pick(endpoint, ['surfaceClass'], '') === 'source' && String(pick(endpoint, ['method'], '')).toUpperCase().includes('GET')).length,
+    endpoints: endpoints.filter((endpoint) => pick(endpoint, ['surfaceClass'], '') === 'source' && String(pick(endpoint, ['method'], '')).toUpperCase().includes('GET')),
+  };
+}
+
+async function resolveExplorerProposal(proposalId, leaderBase = UPSTREAM_BASE) {
+  return upstreamGetUnwrapped(`/v1/explorer/proposals/${encodeURIComponent(proposalId)}`, leaderBase);
+}
+
+async function resolveExplorerWallet(walletAddress, leaderBase = UPSTREAM_BASE) {
+  return upstreamGetUnwrapped(`/v1/explorer/wallets/${encodeURIComponent(walletAddress)}`, leaderBase);
+}
+
+async function resolveExplorerContentNav() {
+  return upstreamGetUnwrapped('/v1/explorer/content/nav');
+}
+
+async function resolveExplorerContentTree(clusterId, logicalPath = '/oak-chain') {
+  const query = new URLSearchParams({ path: logicalPath });
+  return upstreamGetUnwrapped(`/v1/explorer/content/clusters/${encodeURIComponent(clusterId)}/tree?${query.toString()}`);
+}
+
+async function resolveExplorerContentNode(clusterId, logicalPath = '/oak-chain') {
+  const query = new URLSearchParams({ path: logicalPath });
+  return upstreamGetUnwrapped(`/v1/explorer/content/clusters/${encodeURIComponent(clusterId)}/node?${query.toString()}`);
+}
+
+async function resolveExplorerContentProvenance(clusterId, logicalPath = '/oak-chain') {
+  const query = new URLSearchParams({ path: logicalPath });
+  return upstreamGetUnwrapped(`/v1/explorer/content/clusters/${encodeURIComponent(clusterId)}/provenance?${query.toString()}`);
 }
 
 function findLeader(nodes) {
@@ -1462,11 +1510,182 @@ async function resolveTransactionDetail(transactionId) {
   };
 }
 
+function staticExplorerIndex() {
+  return {
+    contractVersion: 'ops.index.v1',
+    generatedAtMs: Date.now(),
+    surfaceRole: 'edge-governed',
+    preferredBrowserContract: '/ops/v1/*',
+    derivedFrom: '/v1/index',
+    count: 8,
+    endpoints: [
+      { method: 'GET', path: '/v1/explorer/summary', category: 'Explorer', description: 'Explorer summary contract', surfaceClass: 'source', replacement: '/ops/v1/explorer/summary' },
+      { method: 'GET', path: '/v1/explorer/proposals/{proposalId}', category: 'Explorer', description: 'Explorer proposal detail', surfaceClass: 'source', replacement: '/ops/v1/explorer/proposals/{proposalId}' },
+      { method: 'GET', path: '/v1/explorer/wallets/{walletAddress}', category: 'Explorer', description: 'Explorer wallet detail', surfaceClass: 'source', replacement: '/ops/v1/explorer/wallets/{walletAddress}' },
+      { method: 'GET', path: '/v1/explorer/content/nav', category: 'Explorer', description: 'Cluster-aware content explorer navigation', surfaceClass: 'source', replacement: '/ops/v1/explorer/content/nav' },
+      { method: 'GET', path: '/v1/explorer/content/clusters/{clusterId}/tree', category: 'Explorer', description: 'Cluster-scoped content tree browse', surfaceClass: 'source', replacement: '/ops/v1/explorer/content/clusters/{clusterId}/tree' },
+      { method: 'GET', path: '/v1/explorer/content/clusters/{clusterId}/node', category: 'Explorer', description: 'Cluster-scoped node detail', surfaceClass: 'source', replacement: '/ops/v1/explorer/content/clusters/{clusterId}/node' },
+      { method: 'GET', path: '/v1/explorer/content/clusters/{clusterId}/provenance', category: 'Explorer', description: 'Cluster-scoped provenance and authority facts', surfaceClass: 'source', replacement: '/ops/v1/explorer/content/clusters/{clusterId}/provenance' },
+      { method: 'GET', path: '/v1/config/osgi', category: 'Configuration', description: 'Effective OSGi config values', surfaceClass: 'source', replacement: '/ops/v1/config/osgi' },
+    ],
+  };
+}
+
+function staticExplorerContentNav() {
+  return {
+    contractVersion: 'explorer.content.v1',
+    generatedAtMs: Date.now(),
+    topologyModel: 'Aeron fiefdoms + lazy read fabric',
+    networkStatus: 'observable',
+    localCluster: {
+      clusterId: CLUSTER_ID,
+      displayName: 'Local Aeron fiefdom',
+      scope: 'local',
+      readOnly: false,
+      authoritative: true,
+      roleLabel: 'Authoritative local write scope',
+      ownedPrefixes: '00-7f',
+      status: 'ACTIVE',
+      transport: 'Aeron consensus',
+      note: 'Local wallets write here; foreign wallets redirect before queueing.',
+      browseRoot: '/oak-chain',
+      nodeCount: 3,
+      leaderLabel: 'Node 1 leads',
+      roots: [{ label: 'Local Aeron fiefdom', path: '/oak-chain', namespace: '/oak-chain', readOnly: false, ownedPrefixes: '00-7f' }],
+    },
+    mountedNeighbors: [
+      {
+        clusterId: 'remote-oak-local-b',
+        displayName: 'Remote oak-local-b',
+        scope: 'remote',
+        readOnly: true,
+        authoritative: false,
+        roleLabel: 'Lazy read-only remote cluster',
+        relation: 'Lazy read-only remote cluster',
+        ownedPrefixes: '80-ff',
+        status: 'visible',
+        transport: 'HTTP segment transfer',
+        note: 'Remote cluster remains outside local consensus and is visible through read-only mounts.',
+        browseRoot: '/oak-chain',
+        roots: [{ label: 'Remote oak-local-b', path: '/oak-chain', namespace: '/oak-chain/80', readOnly: true, ownedPrefixes: '80-ff' }],
+      },
+    ],
+    outerNetwork: {
+      label: 'Oak Chain beyond the local mount horizon',
+      status: 'observable',
+      summary: 'Independent Aeron fiefdoms can be read across a lazy fabric without collapsing into one consensus domain.',
+      discoveryPlane: 'Separate control plane',
+      readFabric: 'Lazy read-only mounts over HTTP segment transfer',
+      writeAuthority: 'Each cluster writes only its owned prefixes.',
+      observedClusterCount: 2,
+      mountedClusterCount: 1,
+      principles: [
+        'Aeron governs the local writable repository only.',
+        'Cross-cluster reads are lazy and read-only.',
+        'Discovery stays separate from consensus.',
+      ],
+    },
+    cacheHints: {
+      local: { strategy: 'event-invalidated', fallbackTtlMs: UPSTREAM_CACHE_TTL_MS },
+      remote: { strategy: 'ttl', ttlMs: 24 * 60 * 60 * 1000 },
+    },
+  };
+}
+
+function staticExplorerContentTree(clusterId, logicalPath = '/oak-chain') {
+  const scope = clusterId === CLUSTER_ID ? 'local' : 'remote';
+  const namespace = scope === 'local' ? '/oak-chain' : '/oak-chain/80';
+  return {
+    contractVersion: 'explorer.content.v1',
+    generatedAtMs: Date.now(),
+    cluster: {
+      clusterId,
+      displayName: scope === 'local' ? 'Local Aeron fiefdom' : 'Remote oak-local-b',
+      scope,
+      readOnly: scope === 'remote',
+      authoritative: scope === 'local',
+      ownedPrefixes: scope === 'local' ? '00-7f' : '80-ff',
+      browseRoot: '/oak-chain',
+    },
+    authority: {
+      clusterId,
+      scope,
+      readOnly: scope === 'remote',
+      authoritative: scope === 'local',
+      namespace,
+      browseRoot: '/oak-chain',
+      ownedPrefixes: scope === 'local' ? '00-7f' : '80-ff',
+    },
+    breadcrumbs: [{ label: 'oak-chain', path: '/oak-chain' }],
+    path: logicalPath,
+    namespace,
+    exists: true,
+    node: {
+      name: logicalPath === '/oak-chain' ? 'oak-chain' : logicalPath.split('/').pop(),
+      path: logicalPath,
+      primaryType: 'nt:unstructured',
+      childCount: 1,
+      propertyCount: 1,
+      hasChildren: true,
+    },
+    children: scope === 'local'
+      ? [{ name: '12', path: '/oak-chain/12', primaryType: 'nt:unstructured', childCount: 1, propertyCount: 1, hasChildren: true }]
+      : [{ name: '80', path: '/oak-chain/80', primaryType: 'nt:unstructured', childCount: 1, propertyCount: 1, hasChildren: true }],
+  };
+}
+
+function staticExplorerContentNode(clusterId, logicalPath = '/oak-chain') {
+  const tree = staticExplorerContentTree(clusterId, logicalPath);
+  return {
+    ...tree,
+    properties: [
+      { name: 'jcr:primaryType', type: 'STRING', multiValued: false, value: 'nt:unstructured' },
+      { name: 'message', type: 'STRING', multiValued: false, value: tree.cluster.scope === 'local' ? 'local seed' : 'remote seed' },
+    ],
+    childrenPreview: tree.children,
+  };
+}
+
+function staticExplorerContentProvenance(clusterId, logicalPath = '/oak-chain') {
+  const tree = staticExplorerContentTree(clusterId, logicalPath);
+  return {
+    ...tree,
+    writeMetadata: tree.cluster.scope === 'local'
+      ? { matchPath: logicalPath, exact: true, recordId: 'record-1', source: 'consensus', validator: 'http://localhost:8090', timestamp: Date.now(), message: 'seeded local write' }
+      : null,
+    walletAuthority: tree.cluster.scope === 'local'
+      ? { wallet: '0x1234567890abcdef1234567890abcdef12345678', ownership: 'local', l1Prefix: '12', scope: 'local', readOnly: false, redirectUrl: null }
+      : null,
+    contentFacts: {
+      readOnly: tree.cluster.scope === 'remote',
+      authoritative: tree.cluster.scope === 'local',
+      propertyCount: 2,
+      childCount: 1,
+    },
+  };
+}
+
 async function resolveNetwork() {
-  const [health, cluster] = await Promise.all([
+  const [health, cluster, contentNav] = await Promise.all([
     resolveHealth().catch(() => ({})),
     resolveCluster().catch(() => ({ nodes: [] })),
+    resolveExplorerContentNav().catch(() => null),
   ]);
+  if (contentNav && typeof contentNav === 'object') {
+    const localCluster = pick(contentNav, ['localCluster'], {});
+    return {
+      topologyModel: pick(contentNav, ['topologyModel'], 'Aeron fiefdoms + lazy read fabric'),
+      networkStatus: pick(contentNav, ['networkStatus'], String(pick(health, ['status'], 'unknown')).toLowerCase()),
+      localCluster: {
+        ...localCluster,
+        nodeCount: toNum(pick(localCluster, ['nodeCount'], pick(cluster, ['nodes'], []).length), pick(cluster, ['nodes'], []).length),
+        status: pick(localCluster, ['status'], pick(cluster, ['clusterState'], 'unknown')),
+      },
+      mountedNeighbors: Array.isArray(pick(contentNav, ['mountedNeighbors'], [])) ? pick(contentNav, ['mountedNeighbors'], []) : [],
+      outerNetwork: pick(contentNav, ['outerNetwork'], {}),
+      cacheHints: pick(contentNav, ['cacheHints'], {}),
+    };
+  }
   const nodes = Array.isArray(pick(cluster, ['nodes'], [])) ? pick(cluster, ['nodes'], []) : [];
   return {
     status: String(pick(health, ['status'], 'unknown')),
@@ -1650,14 +1869,20 @@ function handle(req, res) {
   }
 
   if (path === '/ops/v1/network' && MODE === 'static') {
+    const nav = staticExplorerContentNav();
     sendJson(res, 200, envelope({
-      status: 'healthy',
-      api: 'UP',
-      cluster: 'UP',
-      storage: 'UP',
-      nodeCount: 3,
-      reachableNodes: 3,
+      topologyModel: nav.topologyModel,
+      networkStatus: nav.networkStatus,
+      localCluster: nav.localCluster,
+      mountedNeighbors: nav.mountedNeighbors,
+      outerNetwork: nav.outerNetwork,
+      cacheHints: nav.cacheHints,
     }));
+    return;
+  }
+
+  if (path === '/ops/v1/index' && MODE === 'static') {
+    sendJson(res, 200, envelope(staticExplorerIndex()));
     return;
   }
 
@@ -1706,6 +1931,80 @@ function handle(req, res) {
       },
     }));
     return;
+  }
+
+  if ((path.startsWith('/ops/v1/explorer/proposal/') || path.startsWith('/ops/v1/explorer/proposals/')) && MODE === 'static') {
+    const proposalPrefix = path.startsWith('/ops/v1/explorer/proposals/')
+      ? '/ops/v1/explorer/proposals/'
+      : '/ops/v1/explorer/proposal/';
+    const proposalId = decodeURIComponent(path.substring(proposalPrefix.length));
+    sendJson(res, 200, envelope({
+      contractVersion: 'explorer.v1',
+      generatedAtMs: Date.now(),
+      proposalId,
+      state: 'PENDING',
+      ethereumTxHash: null,
+      timeoutTimestamp: null,
+      confirmedBlock: null,
+      rejectionReason: null,
+      durabilityState: 'UNKNOWN',
+      durabilityTimestamp: null,
+      durabilityError: null,
+      durableHead: null,
+    }));
+    return;
+  }
+
+  if (path.startsWith('/ops/v1/explorer/wallets/') && MODE === 'static') {
+    const walletAddress = decodeURIComponent(path.substring('/ops/v1/explorer/wallets/'.length));
+    sendJson(res, 200, envelope({
+      contractVersion: 'explorer.v1',
+      generatedAtMs: Date.now(),
+      wallet: walletAddress,
+      walletPath: `/oak-chain/00/00/00/${walletAddress}`,
+      authority: {
+        wallet: walletAddress,
+        ownership: 'local',
+        l1Prefix: '00',
+        scope: 'local',
+        readOnly: false,
+        redirectUrl: null,
+      },
+      meta: {
+        contentCount: 0,
+        totalWrites: 0,
+        walletCreated: Date.now(),
+        lastWrite: Date.now(),
+        nodeType: 'WALLET',
+      },
+      recentContent: [],
+    }));
+    return;
+  }
+
+  if (path === '/ops/v1/explorer/content/nav' && MODE === 'static') {
+    sendJson(res, 200, envelope(staticExplorerContentNav()));
+    return;
+  }
+
+  if (path.startsWith('/ops/v1/explorer/content/clusters/') && MODE === 'static') {
+    const suffix = path.substring('/ops/v1/explorer/content/clusters/'.length);
+    const separator = suffix.indexOf('/');
+    const clusterId = separator > 0 ? decodeURIComponent(suffix.slice(0, separator)) : '';
+    const action = separator > 0 ? suffix.slice(separator + 1) : '';
+    const logicalPath = url.searchParams.get('path') || '/oak-chain';
+    if (action === 'tree') {
+      sendJson(res, 200, envelope(staticExplorerContentTree(clusterId, logicalPath)));
+      return;
+    }
+    if (action === 'node') {
+      sendJson(res, 200, envelope(staticExplorerContentNode(clusterId, logicalPath)));
+      return;
+    }
+    if (action === 'provenance') {
+      sendJson(res, 200, envelope(staticExplorerContentProvenance(clusterId, logicalPath)));
+      return;
+    }
   }
 
   if (path === '/ops/v1/cluster' && MODE === 'static') {
@@ -2216,6 +2515,10 @@ function handle(req, res) {
         sendJson(res, 200, envelope(await resolveOverview()));
         return;
       }
+      if (path === '/ops/v1/index') {
+        sendJson(res, 200, envelope(await resolveExplorerIndex()));
+        return;
+      }
       if (path === '/ops/v1/header') {
         sendJson(res, 200, envelope(await resolveHeader()));
         return;
@@ -2227,6 +2530,42 @@ function handle(req, res) {
       if (path === '/ops/v1/explorer/summary') {
         sendJson(res, 200, envelope(await resolveExplorerSummary()));
         return;
+      }
+      if (path.startsWith('/ops/v1/explorer/proposal/') || path.startsWith('/ops/v1/explorer/proposals/')) {
+        const proposalPrefix = path.startsWith('/ops/v1/explorer/proposals/')
+          ? '/ops/v1/explorer/proposals/'
+          : '/ops/v1/explorer/proposal/';
+        const proposalId = decodeURIComponent(path.substring(proposalPrefix.length));
+        sendJson(res, 200, envelope(await resolveExplorerProposal(proposalId)));
+        return;
+      }
+      if (path.startsWith('/ops/v1/explorer/wallets/')) {
+        const walletAddress = decodeURIComponent(path.substring('/ops/v1/explorer/wallets/'.length));
+        sendJson(res, 200, envelope(await resolveExplorerWallet(walletAddress)));
+        return;
+      }
+      if (path === '/ops/v1/explorer/content/nav') {
+        sendJson(res, 200, envelope(await resolveExplorerContentNav()));
+        return;
+      }
+      if (path.startsWith('/ops/v1/explorer/content/clusters/')) {
+        const suffix = path.substring('/ops/v1/explorer/content/clusters/'.length);
+        const separator = suffix.indexOf('/');
+        const clusterId = separator > 0 ? decodeURIComponent(suffix.slice(0, separator)) : '';
+        const action = separator > 0 ? suffix.slice(separator + 1) : '';
+        const logicalPath = url.searchParams.get('path') || '/oak-chain';
+        if (action === 'tree') {
+          sendJson(res, 200, envelope(await resolveExplorerContentTree(clusterId, logicalPath)));
+          return;
+        }
+        if (action === 'node') {
+          sendJson(res, 200, envelope(await resolveExplorerContentNode(clusterId, logicalPath)));
+          return;
+        }
+        if (action === 'provenance') {
+          sendJson(res, 200, envelope(await resolveExplorerContentProvenance(clusterId, logicalPath)));
+          return;
+        }
       }
       if (path === '/ops/v1/cluster') {
         sendJson(res, 200, envelope(await resolveCluster()));

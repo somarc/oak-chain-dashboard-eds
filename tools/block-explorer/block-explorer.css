@@ -1,0 +1,80 @@
+.explorer-layout {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.explorer-hero,
+.explorer-panel,
+.explorer-detail {
+  background: linear-gradient(160deg, rgba(14, 24, 46, 0.96), rgba(20, 38, 74, 0.9));
+  border: 1px solid rgba(146, 197, 255, 0.18);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+}
+
+.summary-grid,
+.detail-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.summary-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(146, 197, 255, 0.14);
+  background: rgba(8, 16, 36, 0.52);
+  padding: 1rem;
+}
+
+.summary-card p {
+  margin: 0;
+}
+
+.summary-card .label {
+  color: var(--text-subtle, #b9c4dd);
+  font-size: 0.82rem;
+  margin-bottom: 0.4rem;
+}
+
+.summary-card .value {
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.explorer-controls {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.control-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.control-group label {
+  color: var(--text-subtle, #b9c4dd);
+}
+
+.control-group input {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(146, 197, 255, 0.16);
+  background: rgba(7, 15, 32, 0.68);
+  color: inherit;
+  padding: 0.85rem 0.95rem;
+}
+
+.detail-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(146, 197, 255, 0.14);
+  background: rgba(8, 16, 36, 0.52);
+  padding: 1rem;
+}
+
+.detail-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, 'SFMono-Regular', Consolas, monospace);
+  font-size: 0.88rem;
+}

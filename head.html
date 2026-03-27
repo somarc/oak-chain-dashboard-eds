@@ -10,7 +10,10 @@
   const isLocalOps = ['localhost', '127.0.0.1'].includes(hostname);
   const isOakchainOps = hostname === 'oakchain.net' || hostname.endsWith('.oakchain.net');
   const hostedWorkerEndpoints = {
+    apiIndex: '/oak-chain-action?route=index',
     explorerSummary: '/oak-chain-action?route=explorer/summary',
+    explorerProposal: '/oak-chain-action?route=explorer/proposals/{proposalId}',
+    explorerWallet: '/oak-chain-action?route=explorer/wallets/{walletAddress}',
     header: '/oak-chain-action?route=header',
     overview: '/oak-chain-action?route=overview',
     cluster: '/oak-chain-action?route=cluster',
@@ -21,6 +24,10 @@
     health: '/oak-chain-action?route=health',
     proposals: '/oak-chain-action?route=proposals',
     explorerReleaseFlow: '/oak-chain-action?route=explorer/release-flow',
+    explorerContentNav: '/oak-chain-action?route=explorer/content/nav',
+    explorerContentTree: '/oak-chain-action?route=explorer/content/clusters/{clusterId}/tree',
+    explorerContentNode: '/oak-chain-action?route=explorer/content/clusters/{clusterId}/node',
+    explorerContentProvenance: '/oak-chain-action?route=explorer/content/clusters/{clusterId}/provenance',
     proposalsReleaseFlow: '/oak-chain-action?route=proposals/release-flow',
     proposalsQueueStats: '/oak-chain-action?route=proposals/queue/stats',
     signals: '/oak-chain-action?route=signals',

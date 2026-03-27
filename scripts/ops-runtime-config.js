@@ -1,6 +1,13 @@
 const DIRECT_ENDPOINTS = Object.freeze({
+  apiIndex: '/ops/v1/index',
   explorerSummary: '/ops/v1/explorer/summary',
+  explorerProposal: '/ops/v1/explorer/proposals/{proposalId}',
+  explorerWallet: '/ops/v1/explorer/wallets/{walletAddress}',
   explorerReleaseFlow: '/ops/v1/explorer/release-flow',
+  explorerContentNav: '/ops/v1/explorer/content/nav',
+  explorerContentTree: '/ops/v1/explorer/content/clusters/{clusterId}/tree',
+  explorerContentNode: '/ops/v1/explorer/content/clusters/{clusterId}/node',
+  explorerContentProvenance: '/ops/v1/explorer/content/clusters/{clusterId}/provenance',
   header: '/ops/v1/header',
   overview: '/ops/v1/overview',
   cluster: '/ops/v1/cluster',
@@ -39,7 +46,10 @@ const DIRECT_ENDPOINTS = Object.freeze({
 });
 
 const EDGE_WORKER_ENDPOINTS = Object.freeze({
+  apiIndex: '/oak-chain-action?route=index',
   explorerSummary: '/oak-chain-action?route=explorer/summary',
+  explorerProposal: '/oak-chain-action?route=explorer/proposals/{proposalId}',
+  explorerWallet: '/oak-chain-action?route=explorer/wallets/{walletAddress}',
   header: '/oak-chain-action?route=header',
   overview: '/oak-chain-action?route=overview',
   cluster: '/oak-chain-action?route=cluster',
@@ -51,6 +61,10 @@ const EDGE_WORKER_ENDPOINTS = Object.freeze({
   health: '/oak-chain-action?route=health',
   proposals: '/oak-chain-action?route=proposals',
   explorerReleaseFlow: '/oak-chain-action?route=explorer/release-flow',
+  explorerContentNav: '/oak-chain-action?route=explorer/content/nav',
+  explorerContentTree: '/oak-chain-action?route=explorer/content/clusters/{clusterId}/tree',
+  explorerContentNode: '/oak-chain-action?route=explorer/content/clusters/{clusterId}/node',
+  explorerContentProvenance: '/oak-chain-action?route=explorer/content/clusters/{clusterId}/provenance',
   proposalsReleaseFlow: '/oak-chain-action?route=proposals/release-flow',
   proposalsQueueStats: '/oak-chain-action?route=proposals/queue/stats',
   signals: '/oak-chain-action?route=signals',

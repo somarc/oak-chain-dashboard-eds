@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Blockchain AEM | Block Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Governed block explorer for Blockchain AEM summary, proposal detail, wallet detail, and release flow."
+    />
+    <base href="/tools/" />
+    <link rel="stylesheet" href="/tools/shell.css" />
+    <link rel="stylesheet" href="/tools/block-explorer/block-explorer.css" />
+    <script src="/tools/block-explorer/block-explorer.js" type="module"></script>
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="presentation">
+              <path d="M7 8.5A2.5 2.5 0 0 1 9.5 6h5A2.5 2.5 0 0 1 17 8.5V10h1.5A1.5 1.5 0 0 1 20 11.5v6A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-6A1.5 1.5 0 0 1 5.5 10H7V8.5Zm2.5-1a1 1 0 0 0-1 1V10h7V8.5a1 1 0 0 0-1-1h-5Zm-4 4v6A1 1 0 0 0 6.5 18h11a1 1 0 0 0 1-1v-6h-13Z" />
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <p class="brand-title">Blockchain <span>AEM</span></p>
+            <p class="brand-subtitle">Global P2P Oak Repository</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Tools dashboard navigation">
+          <p class="nav-label">Menu</p>
+          <a class="nav-item" href="/tools/index.html" data-nav="home">Dashboard</a>
+          <a class="nav-item" href="/tools/ops/ops.html" data-nav="ops">Oak Ops</a>
+          <a class="nav-item" href="/tools/api-catalog/api-catalog.html" data-nav="api-catalog">API Catalog</a>
+          <a class="nav-item" href="/tools/block-explorer/block-explorer.html" data-nav="block-explorer">Block Explorer</a>
+          <a class="nav-item" href="/tools/content-explorer/content-explorer.html" data-nav="content-explorer">Content Explorer</a>
+          <a class="nav-item" href="/tools/staircase/staircase.html" data-nav="staircase">Staircase</a>
+          <a class="nav-item" href="/tools/architecture.html" data-nav="architecture">Architecture</a>
+          <a class="nav-item" href="/docs/ops-api-contract-v1.md" data-nav="contract">Ops Contract</a>
+        </nav>
+
+        <section class="status-panel" aria-labelledby="system-status-title">
+          <div class="panel-heading">
+            <p id="system-status-title" class="nav-label">System Status</p>
+            <span id="status-dot" class="status-dot is-neutral" aria-hidden="true"></span>
+          </div>
+          <div class="status-list">
+            <div class="status-row"><span class="status-label">Validator</span><span id="status-validator" class="status-badge is-neutral">Checking</span></div>
+            <div class="status-row"><span class="status-label">Cluster</span><span id="status-cluster" class="status-badge is-neutral">Awaiting</span></div>
+            <div class="status-row"><span class="status-label">Signals</span><span id="status-signals" class="status-badge is-neutral">Awaiting</span></div>
+            <div class="status-row"><span class="status-label">Mode</span><span id="status-mode" class="status-badge is-info">Detecting</span></div>
+          </div>
+          <div class="status-wallet">
+            <p class="wallet-label">Connected Wallet</p>
+            <code id="status-wallet">--</code>
+          </div>
+        </section>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="dashboard-header">
+          <div class="header-copy">
+            <p class="header-kicker">Explorer Tool</p>
+            <h1>Block Explorer</h1>
+          </div>
+          <div class="header-meta">
+            <div class="header-pill">
+              <span class="pill-label">API Base</span>
+              <strong id="runtime-base">--</strong>
+            </div>
+            <div class="header-pill">
+              <span class="pill-label">Last Sync</span>
+              <strong id="last-updated">Loading…</strong>
+            </div>
+          </div>
+        </header>
+
+        <div class="dashboard-content explorer-layout">
+          <section id="explorer-hero" class="explorer-hero"></section>
+          <section class="explorer-panel">
+            <p class="card-kicker">Summary</p>
+            <h2>Network and Release Snapshot</h2>
+            <div id="explorer-summary"></div>
+          </section>
+          <section class="explorer-panel">
+            <p class="card-kicker">Lookups</p>
+            <h2>Proposal and Wallet Detail</h2>
+            <div class="explorer-controls">
+              <div class="control-group">
+                <label for="proposal-input">Proposal ID</label>
+                <input id="proposal-input" type="text" placeholder="proposal-1" />
+                <button id="proposal-load" class="btn btn-primary" type="button">Load Proposal</button>
+              </div>
+              <div class="control-group">
+                <label for="wallet-input">Wallet Address</label>
+                <input id="wallet-input" type="text" placeholder="0x..." />
+                <button id="wallet-load" class="btn btn-primary" type="button">Load Wallet</button>
+              </div>
+            </div>
+          </section>
+          <section class="detail-grid">
+            <article class="explorer-detail">
+              <p class="card-kicker">Proposal Detail</p>
+              <div id="proposal-detail" class="detail-card"><pre>Load a proposal to inspect its explorer payload.</pre></div>
+            </article>
+            <article class="explorer-detail">
+              <p class="card-kicker">Wallet Detail</p>
+              <div id="wallet-detail" class="detail-card"><pre>Load a wallet to inspect authority and recent content facts.</pre></div>
+            </article>
+          </section>
+          <section class="explorer-detail">
+            <p class="card-kicker">Release Flow</p>
+            <div id="release-detail" class="detail-card"><pre>Awaiting release-flow payload.</pre></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
